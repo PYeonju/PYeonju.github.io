@@ -1,6 +1,6 @@
 resume_url: "Resume.pdf"
 author_name: "PYeonju"
-url: 'https://PYeonju.github.io/'
+url: 'https://pyeonju.github.io/'
 
 plugins:
   - jekyll-seo-tag
