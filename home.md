@@ -6,7 +6,7 @@ permalink: /home/
 
 <div class="two-columns">
     <div class="column">
-        <img src="/Image/Deck.jpg" alt="Description of image">
+        <img src="{{ site.baseurl }}/Image/Deck.jpg" alt="Description of image">
     </div>
     <div class="column">
         <h2>About Me</h2>
