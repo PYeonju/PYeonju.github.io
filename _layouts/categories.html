@@ -15,6 +15,7 @@ title: Categories
             {% endfor %}
         </ul>
     </div>
+    <hr size=2 width=100% color="black" align="Center" NOSHADE />
     {% for category in site.categories %}
     <div class="archive-group">
         {% capture category_name %}{{ category | first }}{% endcapture %}
@@ -26,6 +27,7 @@ title: Categories
             &nbsp;&nbsp;<a href="{{ post.url | relative_url }}">{{post.title}} - {{ post.date | date_to_string }}</a>
         </article>
         <br>
+        <hr size=1 width=100% color="black" align="Center" NOSHADE />
         {% endfor %}
     </div>
     {% endfor %}
