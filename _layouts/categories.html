@@ -8,10 +8,10 @@ title: Categories
 <div id="archives">
     <div class="blogPage-categoryList">
         <ul>
-            <li><a href="{{ "/categories/" | relative_url }}">Categories</a> : </li>
+            <li>Categories :</li>
             {% for category in site.categories %}
             {% capture category_name %}{{ category | first }}{% endcapture %}
-            <li><a href="{{"/categories/#" | append: category_name | relative_url}}">{{category_name}}</a></li>
+            <li><a href="{{ "/categories/#" | append: category_name | relative_url }}">{{ category_name }}</a></li>
             {% endfor %}
         </ul>
     </div>
@@ -19,12 +19,12 @@ title: Categories
     {% for category in site.categories %}
     <div class="archive-group">
         {% capture category_name %}{{ category | first }}{% endcapture %}
-        <div id="#{{ category_name | slugize }}"></div>
+        <div id="{{ category_name | slugize }}"></div>
         <h3 class="category-head">{{ category_name }}</h3>
         <a name="{{ category_name | slugize }}"></a>
         {% for post in site.categories[category_name] %}
         <article class="archive-item">
-            &nbsp;&nbsp;<a href="{{ post.url | relative_url }}">{{post.title}} - {{ post.date | date_to_string }}</a>
+            &nbsp;&nbsp;<a href="{{ post.url | relative_url }}">{{ post.title }} - {{ post.date | date_to_string }}</a>
         </article>
         <br>
         {% endfor %}
