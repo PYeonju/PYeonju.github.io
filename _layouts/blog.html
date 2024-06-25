@@ -10,13 +10,14 @@ pagetype: blog
 <div class="blogPage-categoryList">
     <ul>
         <li>Categories :</li>
+        <li><a href="/categories/#Total_category" onclick="showCategory('Total_category')">Total</a></li>
         {% for category in site.categories %}
         {% capture category_name %}{{ category | first }}{% endcapture %}
         <li><a href="{{ "/categories/#" | append: category_name | relative_url }}">{{ category_name }}</a></li>
         {% endfor %}
     </ul>
 </div>
-<hr size =2 width=100% color="black"align="Center"NOSHADE />
+<hr size="2" width="100%" color="black" align="Center" NOSHADE />
 <ul class="blog-list">
     {% for post in paginator.posts %}
     <li>
@@ -29,7 +30,6 @@ pagetype: blog
 <hr>
 {% if paginator.total_pages > 1 %}
 <ul>
-
     {% if paginator.previous_page %}
     <li>
         <a href="{{ paginator.previous_page_path | prepend: site.baseurl }}">Newer</a>

@@ -3,32 +3,88 @@ layout: description
 permalink: /categories/
 title: Categories
 ---
-
-
 <div id="archives">
     <div class="blogPage-categoryList">
         <ul>
             <li>Categories :</li>
+            <li><a href="#Total_category" onclick="showCategory('Total_category'); return false;">Total</a></li>
             {% for category in site.categories %}
             {% capture category_name %}{{ category | first }}{% endcapture %}
-            <li><a href="{{ "/categories/#" | append: category_name | relative_url }}">{{ category_name }}</a></li>
+            <li><a href="/categories/#{{ category_name | slugize }}" onclick="showCategory('{{ category_name | slugize }}'); return false;">{{ category_name }}</a></li>
             {% endfor %}
         </ul>
     </div>
-    <hr size=2 width=100% color="black" align="Center" NOSHADE />
+    <hr size="2" width="100%" color="black" align="Center" NOSHADE />
+</div>
+
+<div id="categories-list">
     {% for category in site.categories %}
-    <div class="archive-group">
-        {% capture category_name %}{{ category | first }}{% endcapture %}
-        <div id="{{ category_name | slugize }}"></div>
-        <h3 class="category-head">{{ category_name }}</h3>
-        <a name="{{ category_name | slugize }}"></a>
-        {% for post in site.categories[category_name] %}
-        <article class="archive-item">
-            &nbsp;&nbsp;<a href="{{ post.url | relative_url }}">{{ post.title }} - {{ post.date | date_to_string }}</a>
-        </article>
-        <br>
-        {% endfor %}
+    {% capture category_name %}{{ category | first }}{% endcapture %}
+    <div class="category-section" id="{{ category_name | slugize }}" style="display: none;">
+        <h3>{{ category_name }}</h3>
+        <ul>
+            {% for post in site.categories[category_name] %}
+            <li>
+                <a href="{{ post.url | relative_url }}">{{ post.title }} - {{ post.date | date_to_string }}</a>
+            </li>
+            {% endfor %}
+        </ul>
     </div>
     {% endfor %}
-    <hr size=1 width=100% color="black" align="Center" NOSHADE />
+
+    <!-- Total 카테고리 섹션 추가 -->
+    <div class="category-section" id="Total_category" style="display: none;">
+        <h3>Total</h3>
+        <ul>
+            {% for post in site.posts %}
+            <li>
+                <a href="{{ post.url | relative_url }}">{{ post.title }} - {{ post.date | date_to_string }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
+
+<hr size="1" width="100%" color="black" align="Center" NOSHADE />
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 초기 상태 설정
+    var initialCategoryName = window.location.hash.substring(1); // 현재 URL의 해시값에서 카테고리 이름 추출
+    if (initialCategoryName) {
+        showCategory(initialCategoryName);
+    } else {
+        showCategory('Total_category'); // 기본적으로 Total 카테고리 표시
+    }
+
+    // 브라우저 히스토리 관리
+    window.onpopstate = function(event) {
+        var categoryName = event.state.categoryName;
+        showCategory(categoryName);
+    };
+});
+
+// 카테고리를 클릭할 때 실행될 함수
+function showCategory(categoryName) {
+    // 모든 카테고리 섹션 숨기기
+    var categorySections = document.querySelectorAll('.category-section');
+    for (var i = 0; i < categorySections.length; i++) {
+        categorySections[i].style.display = 'none';
+    }
+
+    // 선택한 카테고리 섹션 보이기
+    var selectedSection = document.getElementById(categoryName);
+    if (selectedSection) {
+        selectedSection.style.display = 'block';
+    }
+
+    // 선택한 카테고리 이름 업데이트
+    document.getElementById('category-name').textContent = categoryName;
+
+    // 브라우저 히스토리에 상태 추가
+    var stateObj = { categoryName: categoryName };
+    history.pushState(stateObj, categoryName, '#' + categoryName);
+
+    return false; // 기본 이벤트 처리 방지
+}
+</script>
