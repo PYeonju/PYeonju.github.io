@@ -4,6 +4,7 @@ title: Blog
 pagetype: blog
 pagination:
     enalbed: true
+    per_page: 10
 ---
 <!-- This loops through the paginated posts -->
 {% if paginator.total_posts == 0 %}
@@ -11,7 +12,7 @@ pagination:
 {% else %}
 <div class="blogPage-categoryList">
     <ul>
-        <li>Categories _testText_ :</li>
+        <li>Categories _testText2_ :</li>
         <li><a href="/categories/#Total_category" onclick="showCategory('Total_category')">Total</a></li>
         {% for category in site.categories %}
         {% capture category_name %}{{ category | first }}{% endcapture %}
@@ -20,15 +21,16 @@ pagination:
     </ul>
 </div>
 <hr size="2" width="100%" color="black" align="Center" NOSHADE />
-<ul class="blog-list">
-    {% for post in paginator.posts %}
-    <li>
-        <a class="blog-heading" href="{{ post.url | relative_url }}">{{ post.title }}</a><span class="date">{{ post.date | date_to_string }}</span>
-        <div class="excerpt">{{ post.excerpt }}</div>
-    </li>
-    {% endfor %}
-</ul>
-{% endif %}
+{% for post in paginator.posts %}
+    <div class="blog-list">
+        <h2><a href="{{ post.url }}" class="link-post_list">{{ post.title }}</a></h2>
+        <p class="post-meta">{{ post.date | date: "%b %d, %Y" }} by {{ post.author }}</p>
+        <div class="post-list-content">
+            {{ post.excerpt | truncatewords: 45, '...' }}
+            <p class="text-right"><a href="{{ post.url }}">read more...</a></p>
+        </div>
+    </div>
+{% endfor %}
 <hr>
 {% if paginator.total_pages > 1 %}
 <ul>
