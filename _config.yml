@@ -71,6 +71,8 @@ pagination:
   # Without file extension
   indexpage: "index"
 
+  paginate_path: "/jekyll/:num/pagination-plugin"
+
 ############################################################
 
 ############################################################
