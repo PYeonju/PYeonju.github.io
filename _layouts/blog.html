@@ -2,49 +2,89 @@
 layout: description
 title: Blog
 pagetype: blog
-pagination:
-    enalbed: true
-    per_page: 10
 ---
-<!-- This loops through the paginated posts -->
+
 {% if paginator.total_posts == 0 %}
-<p>No posts right now.</p>
+  <p>No posts right now.</p>
 {% else %}
-<div class="blogPage-categoryList">
+  <div class="blogPage-categoryList">
     <ul>
-        <li>Categories _testText1_ :</li>
-        <li><a href="/categories/#Total_category" onclick="showCategory('Total_category')">Total</a></li>
-        {% for category in site.categories %}
+      <li>Categories :</li>
+      <li><a href="/categories/#Total_category" onclick="showCategory('Total_category')">Total</a></li>
+      {% for category in site.categories %}
         {% capture category_name %}{{ category | first }}{% endcapture %}
         <li><a href="{{ "/categories/#" | append: category_name | relative_url }}">{{ category_name }}</a></li>
-        {% endfor %}
+      {% endfor %}
     </ul>
-</div>
-<hr size="2" width="100%" color="black" align="Center" NOSHADE />
-{% for post in paginator.posts %}
-    <div class="blog-list">
-        <h2><a href="{{ post.url }}" class="link-post_list">{{ post.title }}</a></h2>
-        <p class="post-meta">{{ post.date | date: "%b %d, %Y" }} by {{ post.author }}</p>
-        <div class="post-list-content">
-            {{ post.excerpt | truncatewords: 45, '...' }}
-            <p class="text-right"><a href="{{ post.url }}">read more...</a></p>
+  </div>
+  <hr size="2" width="100%" color="black" align="Center" NOSHADE />
+
+  <div id="posts-container">
+    {% for post in paginator.posts %}
+      <div class="post-item">
+        <div class="post-header">
+          <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
+          <p class="post-date">{{ post.date | date: "%Y-%m-%d" }}</p>
         </div>
-    </div>
-{% endfor %}
-</ul>
+        <p class="post-excerpt">{{ post.excerpt | strip_html }}</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div id="load-more">
+    <div id="loading-indicator" style="display: none;">로딩 중...</div>
+  </div>
+
 {% endif %}
-<hr>
-{% if paginator.total_pages > 1 %}
-<ul>
-    {% if paginator.previous_page %}
-    <li>
-        <a href="{{ paginator.previous_page_path | prepend: site.baseurl }}">Newer</a>
-    </li>
-    {% endif %}
-    {% if paginator.next_page %}
-    <li>
-        <a href="{{ paginator.next_page_path | prepend: site.baseurl }}">Older</a>
-    </li>
-    {% endif %}
-</ul>
-{% endif %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+var page = 1;
+var loading = false;
+
+function loadMorePosts() {
+  if (loading) return;
+  loading = true;
+  $('#loading-indicator').show();
+  $.ajax({
+    url: '/page/' + (page + 1) + '/',
+    method: 'GET',
+    success: function(data) {
+      var posts = $(data).find('#posts-container').html();
+      $('#posts-container').append(posts);
+      page++;
+    },
+    complete: function() {
+      $('#loading-indicator').hide();
+      loading = false;
+    }
+  });
+}
+
+$(window).scroll(function() {
+  if ($(window).scrollTop() + $(window).height() >= $(document).height() - 200) {
+    loadMorePosts();
+  }
+});
+</script>
+
+<style>
+.post-item {
+  margin-bottom: 10px; /* 간격을 줄임 */
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-date {
+  font-size: 14px;
+  color: #999;
+}
+
+.post-excerpt {
+  margin-top: 5px; /* 내용 위 간격을 줄임 */
+}
+</style>
