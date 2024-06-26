@@ -2,6 +2,8 @@
 layout: description
 title: Blog
 pagetype: blog
+pagination:
+    enalbed: true
 ---
 <!-- This loops through the paginated posts -->
 {% if paginator.total_posts == 0 %}
@@ -9,7 +11,7 @@ pagetype: blog
 {% else %}
 <div class="blogPage-categoryList">
     <ul>
-        <li>Categories :</li>
+        <li>Categories _testText_ :</li>
         <li><a href="/categories/#Total_category" onclick="showCategory('Total_category')">Total</a></li>
         {% for category in site.categories %}
         {% capture category_name %}{{ category | first }}{% endcapture %}
