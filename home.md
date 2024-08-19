@@ -9,12 +9,15 @@ permalink: /home/
         <img src="{{ site.baseurl }}/Image/Deck.jpg" alt="Description of image">
     </div>
     <div class="column">
+        <h1> 아직 미완성 블로그입니다. </h1>
         <h2>About Me</h2>
         <p>안녕하세요.</p>
         <br>
         신입 게임 개발자입니다.
         <br>
-        신입 개발자의 고군분투 블로그입니다.
+        신입 개발자의 고군분투 블로그입니다.<br>
+        천천히 채워가고 있습니다. 
+        <br>
     </div>
 </div>
 
