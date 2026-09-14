@@ -3,4 +3,12 @@ layout: description
 ---
 <h1>Blog</h1>
 <p>모든 글을 최신순으로 볼 수 있습니다.</p>
-{% include post_list.html posts=site.posts %}
+<label for="posts-per-page">한 페이지에 표시할 글</label>
+<select id="posts-per-page">
+  <option value="10">10개</option>
+  <option value="15">15개</option>
+  <option value="20">20개</option>
+</select>
+{% include post_list.html posts=site.posts paginated=true %}
+<nav id="blog-pagination" class="blog-pagination" aria-label="글 목록 페이지"></nav>
+<script defer src="{{ '/assets/js/pagination.js' | relative_url }}"></script>

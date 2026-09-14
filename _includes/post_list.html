@@ -1,11 +1,14 @@
 {% if include.posts.size == 0 %}
 <p>아직 작성된 글이 없습니다.</p>
 {% else %}
-<ul class="post-list">
+<ul class="post-list" {% if include.paginated %}id="blog-post-list"{% endif %}>
   {% for post in include.posts %}
   <li>
-    <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
-    <time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: '%Y-%m-%d' }}</time>
+    <div class="post-row">
+      <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+      <time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: '%Y-%m-%d' }}</time>
+      <button type="button" class="delete-post" data-path="{{ post.path | escape }}" data-title="{{ post.title | escape }}" aria-label="{{ post.title | escape }} 삭제" title="글 삭제" hidden>×</button>
+    </div>
     {% if post.summarize %}<p>{{ post.summarize }}</p>{% endif %}
   </li>
   {% endfor %}
