@@ -37,6 +37,13 @@ jobs:
           paths = re.findall(r'data-path="([^"]+)"', blog)
           assert paths and all(path.startswith('_posts/') and path.endswith('.md') for path in paths), paths
           assert 'id="delete-dialog"' in series
+          title = '테스트용'
+          print('POST_DIAGNOSTIC blog_has_title=', title in blog)
+          print('POST_DIAGNOSTIC series_has_title=', title in series)
+          print('POST_DIAGNOSTIC rendered_posts=', len(paths))
+          print('POST_DIAGNOSTIC source_post=', list(Path('_posts').glob('2026-09-14-*.md')))
+          assert title in blog, 'The new post is absent from Jekyll Blog output'
+          assert title in series, 'The new post is absent from Jekyll Series output'
           CHECK
       - uses: actions/upload-pages-artifact@v3
         with:
