@@ -21,6 +21,7 @@ jobs:
         with:
           ruby-version: '3.1'
           bundler-cache: true
+      - run: node --test tests/blog-ui.test.js
       - run: bundle exec jekyll build
       - name: Check rendered blog controls and post paths
         run: |
