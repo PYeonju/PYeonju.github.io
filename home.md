@@ -9,7 +9,6 @@ permalink: /home/
         <img src="{{ site.baseurl }}/Image/Deck.jpg" alt="Description of image">
     </div>
     <div class="column">
-        <h1> 아직 미완성 블로그입니다. </h1>
         <h2>About Me</h2>
         <p>안녕하세요.</p>
         <br>
