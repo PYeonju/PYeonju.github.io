@@ -22,6 +22,21 @@ jobs:
           ruby-version: '3.1'
           bundler-cache: true
       - run: bundle exec jekyll build
+      - name: Check rendered blog controls and post paths
+        run: |
+          python3 - <<'CHECK'
+          from pathlib import Path
+          import re
+          blog = Path('_site/blog/index.html').read_text()
+          series = Path('_site/series/index.html').read_text()
+          admin = Path('_site/admin/index.html').read_text()
+          assert 'id="posts-per-page"' in blog
+          assert 'id="admin-button"' in blog
+          assert 'id="post-form"' in admin
+          paths = re.findall(r'data-path="([^"]+)"', blog)
+          assert paths and all(path.startswith('_posts/') and path.endswith('.md') for path in paths), paths
+          assert 'id="delete-dialog"' in series
+          CHECK
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
