@@ -1,17 +1,7 @@
 <ul>
-      <li>
-        <a href = "{{ 'home/' | relative_url }}">
-          Home
-        </a>
-      </li>
-      <li>
-        <a href = "{{ 'series/' | relative_url }}">
-          Series
-        </a>
-      </li>
-      <li>
-        <a href = "{{ 'blog/' | relative_url }}">
-          Blog
-        </a>
-      </li>
+  <li><a href="{{ '/home/' | relative_url }}">Home</a></li>
+  <li><a href="{{ '/series/' | relative_url }}">Series</a></li>
+  <li><a href="{{ '/blog/' | relative_url }}">Blog</a></li>
+  <li><a href="{{ '/admin/' | relative_url }}" id="new-post-link" hidden>New Post</a></li>
 </ul>
+<script defer src="{{ '/assets/js/admin-link.js' | relative_url }}"></script>
