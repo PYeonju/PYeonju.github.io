@@ -1,23 +1,13 @@
 ---
 layout: description
 ---
-<link rel="stylesheet" href="styles.css">
 
 <h1 class="large-heading">{{ page.title }} <small class="post-date">{{ page.date | date_to_string }}</small></h1>
 {{ content }}
 
 <div class="post-footer">
 <div class="post-categories">
-  Categories :
-  {% if post %}
-    {% assign categories = post.categories %}
-  {% else %}
-    {% assign categories = page.categories %}
-  {% endif %}
-  {% for category in categories %}
-      <a href="{{site.baseurl}}/categories/#{{category|slugize}}">{{category}}</a>
-  {% unless forloop.last %}&nbsp;{% endunless %}
-  {% endfor %}
+  {% if page.series %}Series: <a href="{{ '/series/' | relative_url }}#{{ page.series | slugify }}">{{ page.series }}</a>{% endif %}
 </div>
 <div>{% include share_buttons.html %}</div>
 

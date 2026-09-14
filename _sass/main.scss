@@ -270,3 +270,12 @@ body {
     overflow: auto;
   }
 }
+.post-list { list-style: none; padding-left: 0; }
+.post-list li { padding: 1rem 0; border-bottom: 1px solid currentColor; }
+.post-list time { float: right; font-size: .85em; opacity: .7; }
+.post-list p { margin: .4rem 0 0; }
+.series-group { margin-top: 2rem; }
+#login-panel input, #post-form input, #post-form textarea { display: block; box-sizing: border-box; width: 100%; margin: .4rem 0 1rem; padding: .65rem; }
+#post-form label, #login-panel label { display: block; margin-top: 1rem; }
+#post-form textarea { font: inherit; }
+[hidden] { display: none !important; }

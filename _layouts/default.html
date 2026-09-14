@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="{{"/favicon.ico" | relative_url }}" type="image/x-icon" />
-    <link rel="dns-prefetch" href="https://{{ site.disqus.shortname }}.disqus.com">
     <meta
     itemprop="description"
     name="description"
@@ -27,9 +26,6 @@
     <!-- Load css when script is disabled -->
     <noscript><link rel="stylesheet" href="{{"/assets/css/styles.css" | relative_url}}"></noscript>
 
-    <!-- Dns Prefetch the google analytics -->
-    <link rel="dns-prefetch" href="www.googletagmanager.com">
-    <link rel="dns-prefetch" href="www.google-analytics.com">
 
 
 
@@ -37,7 +33,6 @@
     <script defer src="{{"/assets/js/theme.js" | relative_url }}"></script>
     <script defer src="{{"/assets/js/script.js" | relative_url }}"></script>
 
-    {% include analytics.html %}
     {% feed_meta %}
     {% seo %}
 

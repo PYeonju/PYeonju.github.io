@@ -1,0 +1,13 @@
+{% if include.posts.size == 0 %}
+<p>아직 작성된 글이 없습니다.</p>
+{% else %}
+<ul class="post-list">
+  {% for post in include.posts %}
+  <li>
+    <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+    <time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: '%Y-%m-%d' }}</time>
+    {% if post.summarize %}<p>{{ post.summarize }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
