@@ -1,10 +1,10 @@
 <ul>
   <li><a href="{{ '/home/' | relative_url }}">Home</a></li>
-  <li><a href="{{ '/series/' | relative_url }}">Series</a></li>
   <li><a href="{{ '/blog/' | relative_url }}">Blog</a></li>
-  <li><button type="button" id="admin-button">관리자 권한</button></li>
+  <li><a href="{{ '/series/' | relative_url }}">Series</a></li>
   <li><a href="{{ '/admin/' | relative_url }}" id="new-post-link" hidden>New Post</a></li>
 </ul>
+<button type="button" id="admin-button">관리자 권한</button>
 <dialog id="admin-dialog" aria-labelledby="admin-dialog-title">
   <form method="dialog" id="admin-form">
     <h2 id="admin-dialog-title">관리자 권한</h2>
