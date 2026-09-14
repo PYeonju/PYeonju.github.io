@@ -4,16 +4,8 @@ title: New Post
 permalink: /admin/
 ---
 <h1>New Post</h1>
-<p>GitHub 계정으로 저장소 권한을 확인한 후 이 브라우저에서 글을 작성할 수 있습니다.</p>
-<div id="login-panel">
-  <label for="github-token">GitHub fine-grained token (Contents: Read and write)</label>
-  <input id="github-token" type="password" autocomplete="off" placeholder="토큰을 입력하세요">
-  <button type="button" id="login-button">관리자 확인</button>
-  <p><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub에서 토큰 만들기</a> · 대상 저장소: PYeonju.github.io</p>
-</div>
+<p id="editor-locked">상단의 <strong>관리자 권한</strong>에서 GitHub 토큰을 인증하면 글을 작성할 수 있습니다.</p>
 <form id="post-form" hidden>
-  <p id="admin-user"></p>
-  <button type="button" id="logout-button">로그아웃</button>
   <label for="post-title">제목</label>
   <input id="post-title" required maxlength="120">
   <label for="post-series">Series (선택)</label>

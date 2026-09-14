@@ -279,3 +279,12 @@ body {
 #post-form label, #login-panel label { display: block; margin-top: 1rem; }
 #post-form textarea { font: inherit; }
 [hidden] { display: none !important; }
+.post-row { display: flex; align-items: baseline; gap: .6rem; }
+.post-row a { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.post-row time { float: none; white-space: nowrap; }
+.delete-post { color: #c62828; cursor: pointer; font-size: 1.25em; line-height: 1; }
+.blog-pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; margin: 2rem 0; }
+.blog-pagination button { cursor: pointer; }
+#admin-dialog, #delete-dialog { max-width: min(90vw, 30rem); padding: 1.5rem; }
+#admin-dialog::backdrop, #delete-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+#admin-dialog input { box-sizing: border-box; width: 100%; padding: .6rem; }
