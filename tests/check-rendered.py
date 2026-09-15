@@ -58,6 +58,7 @@ class Page(HTMLParser):
                 break
 
 assert Path('_site/assets/vendor/js-yaml-5.4.2.min.js').is_file()
+assert Path('_site/assets/vendor/markdown-it-15.0.2.min.js').is_file()
 admin = Page(Path('_site/admin/index.html').read_text())
 for name in ('post-title', 'post-series', 'post-summary', 'post-content', 'publish-button'):
     tag, parents = admin.fields[name]

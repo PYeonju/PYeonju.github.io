@@ -26,12 +26,15 @@ function environment(script, elements, admin, options = {}) {
     dispatchEvent(event) { this.listeners[event.type]?.(event); }
   };
   const context = vm.createContext({
-    document, window: { BlogAdmin: admin, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
-    CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
+    document, localStorage: options.storage, getComputedStyle: () => ({ getPropertyValue: name => ({ '--primary-background-color': '#222', '--primary-text-color': 'white', '--primary-highlight-color': '#2e2e2e' }[name]) }), window: { BlogAdmin: admin, confirm: () => true, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
+    CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
     encodeURIComponent, TextEncoder, TextDecoder, btoa, atob, URLSearchParams, URL, Date: options.Date || Date
   });
   vm.runInContext(fs.readFileSync('assets/vendor/js-yaml-5.4.2.min.js', 'utf8'), context);
+  vm.runInContext(fs.readFileSync('assets/vendor/markdown-it-15.0.2.min.js', 'utf8'), context);
+  if (options.markdownit) context.markdownit = options.markdownit;
   vm.runInContext(fs.readFileSync(script, 'utf8'), context);
+  document.runtime = context;
   return document;
 }
 
@@ -265,13 +268,10 @@ test('Preview renders Markdown in an isolated frame without publishing and clear
   } };
   const doc = environment('assets/js/preview.js', elements, admin);
   await elements['preview-button'].click();
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].path, '/markdown');
-  assert.equal(calls[0].responseType, 'text');
-  assert.equal(JSON.parse(calls[0].options.body).text, elements['post-content'].value);
+  assert.equal(calls.length, 0, 'Preview must not send the draft to GitHub');
   assert.equal(elements['post-preview'].hidden, false);
   assert.match(elements['preview-frame'].srcdoc, /&lt;img src=x onerror=alert\(1\)&gt;/);
-  assert.match(elements['preview-frame'].srcdoc, /<pre><code>int x;/);
+  assert.match(elements['preview-frame'].srcdoc, /<pre><code[^>]*>int x;/);
   assert.match(fs.readFileSync('admin.html', 'utf8'), /id="preview-frame"[^>]*sandbox=""/);
   elements['post-form'].listeners.reset();
   assert.equal(elements['post-preview'].hidden, true);
@@ -279,7 +279,7 @@ test('Preview renders Markdown in an isolated frame without publishing and clear
   admin.verified = false;
   doc.listeners['blog-admin-change']();
   await elements['preview-button'].click();
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 0);
 });
 
 test('Preview failure preserves the draft and allows retry', async () => {
@@ -287,9 +287,106 @@ test('Preview failure preserves the draft and allows retry', async () => {
   for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
   elements['post-content'].value = 'Keep this text';
   elements['post-title'].value = 'Title';
-  environment('assets/js/preview.js', elements, { verified: true, async request() { throw new Error('Network failure'); } });
+  environment('assets/js/preview.js', elements, { verified: true }, { markdownit: () => { throw new Error('Render failure'); } });
   await elements['preview-button'].click();
   assert.equal(elements['post-content'].value, 'Keep this text');
   assert.equal(elements['preview-button'].disabled, false);
-  assert.match(elements['preview-status'].textContent, /Network failure/);
+  assert.match(elements['preview-status'].textContent, /Render failure/);
+});
+
+test('Preview keeps plain text, line breaks, angle brackets and readable theme colors', async () => {
+  const elements = editorFields();
+  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
+  elements['preview-frame'].dataset.styles = '/assets/css/styles.css';
+  elements['post-title'].value = '일반 글';
+  elements['post-content'].value = '그냥 Text 입니다.\n다음 줄입니다.\n\n<Text>\nvector<int> & 비교';
+  environment('assets/js/preview.js', elements, { verified: true });
+  await elements['preview-button'].click();
+  const html = elements['preview-frame'].srcdoc;
+  assert.match(html, /그냥 Text 입니다\.<br>/);
+  assert.match(html, /다음 줄입니다\./);
+  assert.match(html, /&lt;Text&gt;/);
+  assert.match(html, /vector&lt;int&gt; &amp; 비교/);
+  assert.match(html, /--primary-background-color:#222/);
+  assert.match(html, /--primary-text-color:white/);
+});
+
+function draftFields() {
+  const fields = editorFields();
+  for (const id of ['draft-status','draft-recovery','draft-recovery-message','draft-save','draft-restore','draft-discard']) fields[id] = element();
+  for (const id of ['post-title','post-series','post-summary','post-content']) fields[id].value = '';
+  fields['draft-recovery'].hidden = true;
+  return fields;
+}
+function storage() {
+  const data = new Map();
+  return { data, getItem: key => data.get(key) ?? null, setItem: (key,value) => data.set(key,value), removeItem: key => data.delete(key) };
+}
+
+test('Drafts auto-save all fields, recover after reopening, stay separate and clear after publishing', () => {
+  const saved = storage();
+  const admin = { verified: true };
+  let fields = draftFields();
+  let doc = environment('assets/js/drafts.js', fields, admin, { storage: saved });
+  doc.runtime.window.BlogDrafts.activate({ path: 'new', branch: 'main', sha: '' });
+  fields['post-title'].value = '제목';
+  fields['post-series'].value = 'C++';
+  fields['post-summary'].value = '소개';
+  fields['post-content'].value = '본문\n두 번째 줄';
+  fields['post-content'].listeners.input();
+  assert.equal(saved.data.size, 1);
+  assert.equal([...saved.data.values()][0].includes('blog_token'), false);
+  fields = draftFields();
+  doc = environment('assets/js/drafts.js', fields, admin, { storage: saved });
+  doc.runtime.window.BlogDrafts.activate({ path: 'new', branch: 'main', sha: '' });
+  assert.equal(fields['draft-recovery'].hidden, false);
+  fields['draft-restore'].click();
+  assert.equal(fields['post-content'].value, '본문\n두 번째 줄');
+  assert.equal(fields['post-title'].value, '제목');
+  assert.equal(fields['post-series'].value, 'C++');
+  assert.equal(fields['post-summary'].value, '소개');
+  const editFields = draftFields();
+  const editDoc = environment('assets/js/drafts.js', editFields, admin, { storage: saved });
+  editDoc.runtime.window.BlogDrafts.activate({ path: '_posts/a.md', branch: 'main', sha: 'old' });
+  assert.equal(editFields['draft-recovery'].hidden, true);
+  editFields['post-content'].value = '수정 초안';
+  editFields['post-content'].listeners.input();
+  assert.equal(saved.data.size, 2);
+  doc.runtime.window.BlogDrafts.published('new-sha');
+  assert.equal(saved.data.size, 1, 'Only the published draft is cleared');
+  editDoc.runtime.window.BlogDrafts.published('edit-sha');
+  assert.equal(saved.data.size, 0);
+});
+
+test('An edit draft warns about a newer original, does not overwrite before restore and can be discarded', () => {
+  const saved = storage();
+  const admin = { verified: true };
+  const first = draftFields();
+  let doc = environment('assets/js/drafts.js', first, admin, { storage: saved });
+  doc.runtime.window.BlogDrafts.activate({ path: '_posts/a.md', branch: 'main', sha: 'old' });
+  first['post-content'].value = 'old draft';
+  first['post-content'].listeners.input();
+  const next = draftFields();
+  next['post-content'].value = 'latest published text';
+  doc = environment('assets/js/drafts.js', next, admin, { storage: saved });
+  doc.runtime.window.BlogDrafts.activate({ path: '_posts/a.md', branch: 'main', sha: 'new' });
+  assert.match(next['draft-recovery-message'].textContent, /원본 글이 변경/);
+  assert.equal(next['post-content'].value, 'latest published text');
+  next['post-content'].listeners.input();
+  assert.match([...saved.data.values()][0], /old draft/);
+  next['draft-discard'].click();
+  assert.equal(saved.data.size, 0);
+  assert.equal(next['post-content'].value, 'latest published text');
+});
+
+test('Draft storage failure leaves the editor text intact and reports failure', () => {
+  const fields = draftFields();
+  const doc = environment('assets/js/drafts.js', fields, { verified: true }, { storage: {
+    getItem() { return null; }, setItem() { throw new Error('Quota'); }
+  } });
+  doc.runtime.window.BlogDrafts.activate({ path: 'new', branch: 'main', sha: '' });
+  fields['post-content'].value = 'keep me';
+  fields['post-content'].listeners.input();
+  assert.equal(fields['post-content'].value, 'keep me');
+  assert.match(fields['draft-status'].textContent, /임시저장하지 못했습니다/);
 });

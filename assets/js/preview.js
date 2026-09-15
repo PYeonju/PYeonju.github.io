@@ -18,6 +18,7 @@
   }
   form.addEventListener('reset', clear);
   document.addEventListener('blog-admin-change', clear);
+  document.addEventListener('blog-draft-restored', clear);
   clear();
   button.addEventListener('click', async () => {
     if (!admin.verified || button.disabled) return;
@@ -29,15 +30,14 @@
     status.textContent = '미리보기를 만드는 중...';
     panel.hidden = true;
     try {
-      const html = await admin.request('/markdown', {
-        method: 'POST', headers: { Accept: 'text/html', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: body, mode: 'gfm' })
-      }, 'text');
+      const html = markdownit({ html: false, breaks: true, linkify: true }).render(body);
       if (current !== generation || !admin.verified) return;
       const styles = new URL(frame.dataset.styles, window.location.href).href;
       const base = window.location.origin + '/';
+      const theme = getComputedStyle(document.documentElement);
+      const colors = ['background', 'text', 'highlight'].map(name => '--primary-' + name + '-color:' + theme.getPropertyValue('--primary-' + name + '-color')).join(';');
       // The sandbox has no script or same-origin permission: preview content cannot access the token.
-      frame.srcdoc = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="' + escape(base) + '"><link rel="stylesheet" href="' + escape(styles) + '"></head><body class="preview-body"><header class="post-header"><h1 class="post-title">' + escape(title) + '</h1></header><div class="post-content">' + html + '</div></body></html>';
+      frame.srcdoc = '<!doctype html><html lang="ko" style="' + escape(colors) + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="' + escape(base) + '"><link rel="stylesheet" href="' + escape(styles) + '"></head><body class="preview-body" style="color:var(--primary-text-color,#222);background:var(--primary-background-color,white)"><header class="post-header"><h1 class="post-title">' + escape(title) + '</h1></header><div class="post-content">' + html + '</div></body></html>';
       panel.hidden = false;
       status.textContent = '미리보기를 갱신했습니다.';
     } catch (error) {
