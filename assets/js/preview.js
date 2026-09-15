@@ -7,6 +7,33 @@
   const form = document.getElementById('post-form');
   const admin = window.BlogAdmin;
   let generation = 0;
+  const scriptUrl = new URL(document.currentScript?.src || '/assets/js/preview.js', window.location.href);
+  let rendererPromise = null;
+  function getRenderer() {
+    if (typeof markdownit === 'function') return Promise.resolve(markdownit);
+    if (rendererPromise) return rendererPromise;
+    // An older cached editor page may not include the renderer script.
+    rendererPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      const url = new URL('../vendor/markdown-it-15.0.2.min.js', scriptUrl);
+      url.search = scriptUrl.search;
+      script.src = url.href;
+      let finished = false;
+      const finish = error => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
+        script.remove();
+        if (error) { rendererPromise = null; reject(error); }
+        else resolve(markdownit);
+      };
+      const timeout = setTimeout(() => finish(new Error('미리보기 파일을 불러오지 못했습니다. 다시 눌러 주세요.')), 15000);
+      script.onload = () => finish(typeof markdownit === 'function' ? null : new Error('미리보기 변환기를 초기화하지 못했습니다.'));
+      script.onerror = () => finish(new Error('미리보기 파일을 불러오지 못했습니다. 다시 눌러 주세요.'));
+      document.head.append(script);
+    });
+    return rendererPromise;
+  }
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function clear() {
@@ -30,7 +57,8 @@
     status.textContent = '미리보기를 만드는 중...';
     panel.hidden = true;
     try {
-      const html = markdownit({ html: false, breaks: true, linkify: true }).render(body);
+      const render = await getRenderer();
+      const html = render({ html: false, breaks: true, linkify: true }).render(body);
       if (current !== generation || !admin.verified) return;
       const styles = new URL(frame.dataset.styles, window.location.href).href;
       const base = window.location.origin + '/';
