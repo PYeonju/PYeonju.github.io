@@ -2,18 +2,17 @@
 layout: description
 ---
 
-<h1 class="large-heading">{{ page.title }} <small class="post-date">{{ page.date | date_to_string }}</small></h1>
 <div class="post-admin-actions" data-admin-only hidden>
   <a class="edit-post" href="{{ '/admin/' | relative_url }}?edit={{ page.path | url_encode }}">수정</a>
   <button type="button" class="delete-post" data-path="{{ page.path | escape }}" data-title="{{ page.title | escape }}" data-after-delete="{{ '/blog/' | relative_url }}">삭제</button>
 </div>
+<h1 class="large-heading">{{ page.title }} <small class="post-date">{{ page.date | date_to_string }}</small></h1>
 {{ content }}
 
 <div class="post-footer">
 <div class="post-categories">
   {% if page.series %}Series: <a href="{{ '/series/' | relative_url }}#{{ page.series | slugify }}">{{ page.series }}</a>{% endif %}
 </div>
-<div>{% include share_buttons.html %}</div>
 
 </div>
 {% if site.disqus.shortname and page.comments %}
