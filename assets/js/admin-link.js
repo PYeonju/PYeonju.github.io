@@ -37,7 +37,7 @@
   function setVerified(value) {
     verified = value;
     document.getElementById('new-post-link').hidden = !value;
-    document.querySelectorAll('.delete-post').forEach(item => { item.hidden = !value; });
+    document.querySelectorAll('.delete-post, [data-admin-only]').forEach(item => { item.hidden = !value; });
     button.textContent = value ? '관리자 로그아웃' : '관리자 권한';
     document.dispatchEvent(new CustomEvent('blog-admin-change', { detail: { verified: value } }));
   }

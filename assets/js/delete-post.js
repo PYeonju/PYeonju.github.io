@@ -30,8 +30,10 @@
         body: JSON.stringify({ message: 'Delete post: ' + button.dataset.title, sha: file.sha, branch: admin.branch })
       });
       document.dispatchEvent(new CustomEvent('blog-post-deleted', { detail: { button } }));
-      button.closest('li').remove();
+      const row = button.closest('li');
+      if (row) row.remove();
       dialog.close();
+      if (button.dataset.afterDelete) window.location.assign(button.dataset.afterDelete);
     } catch (error) { status.textContent = '삭제 실패: ' + error.message; }
     finally { confirm.disabled = false; }
   });
