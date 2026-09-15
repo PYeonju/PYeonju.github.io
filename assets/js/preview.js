@@ -63,7 +63,8 @@
       const styles = new URL(frame.dataset.styles, window.location.href).href;
       const base = window.location.origin + '/';
       const theme = getComputedStyle(document.documentElement);
-      const colors = ['background', 'text', 'highlight'].map(name => '--primary-' + name + '-color:' + theme.getPropertyValue('--primary-' + name + '-color')).join(';');
+      const defaults = { background: '#fff', text: '#222', highlight: '#eee' };
+      const colors = Object.keys(defaults).map(name => '--primary-' + name + '-color:' + (theme.getPropertyValue('--primary-' + name + '-color').trim() || defaults[name])).join(';');
       // The sandbox has no script or same-origin permission: preview content cannot access the token.
       frame.srcdoc = '<!doctype html><html lang="ko" style="' + escape(colors) + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="' + escape(base) + '"><link rel="stylesheet" href="' + escape(styles) + '"></head><body class="preview-body" style="color:var(--primary-text-color,#222);background:var(--primary-background-color,white)"><header class="post-header"><h1 class="post-title">' + escape(title) + '</h1></header><div class="post-content">' + html + '</div></body></html>';
       panel.hidden = false;

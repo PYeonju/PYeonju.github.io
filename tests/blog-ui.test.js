@@ -26,7 +26,7 @@ function environment(script, elements, admin, options = {}) {
     dispatchEvent(event) { this.listeners[event.type]?.(event); }
   };
   const context = vm.createContext({
-    document, localStorage: options.storage, getComputedStyle: () => ({ getPropertyValue: name => ({ '--primary-background-color': '#222', '--primary-text-color': 'white', '--primary-highlight-color': '#2e2e2e' }[name]) }), window: { BlogAdmin: admin, confirm: () => true, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
+    document, localStorage: options.storage, getComputedStyle: options.getComputedStyle || (() => ({ getPropertyValue: name => ({ '--primary-background-color': '#222', '--primary-text-color': 'white', '--primary-highlight-color': '#2e2e2e' }[name]) })), window: { BlogAdmin: admin, confirm: () => true, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
     CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
     encodeURIComponent, TextEncoder, TextDecoder, btoa, atob, URLSearchParams, URL, Date: options.Date || Date
   });
@@ -389,4 +389,19 @@ test('Draft storage failure leaves the editor text intact and reports failure', 
   fields['post-content'].listeners.input();
   assert.equal(fields['post-content'].value, 'keep me');
   assert.match(fields['draft-status'].textContent, /임시저장하지 못했습니다/);
+});
+
+
+test('Preview stays readable while the stylesheet has not loaded', async () => {
+  const elements = editorFields();
+  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
+  elements['preview-frame'].dataset.styles = '/assets/css/styles.css';
+  elements['post-title'].value = '';
+  elements['post-content'].value = '# 안녕하세요\n\n그리고 그냥\n\n이런식으로 작성하는 텍스트';
+  environment('assets/js/preview.js', elements, { verified: true }, { getComputedStyle: () => ({ getPropertyValue: () => '' }) });
+  await elements['preview-button'].click();
+  assert.match(elements['preview-frame'].srcdoc, /<h1>안녕하세요<\/h1>/);
+  assert.match(elements['preview-frame'].srcdoc, /<p>이런식으로 작성하는 텍스트<\/p>/);
+  assert.match(elements['preview-frame'].srcdoc, /--primary-background-color:#fff/);
+  assert.match(elements['preview-frame'].srcdoc, /--primary-text-color:#222/);
 });
