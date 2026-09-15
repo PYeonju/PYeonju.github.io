@@ -23,7 +23,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const base = `http://127.0.0.1:${server.address().port}`;
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.addInitScript(() => sessionStorage.setItem('blog_token', 'test-only-mocked-token'));
+    await page.addInitScript(() => { if (window === window.top) sessionStorage.setItem('blog_token', 'test-only-mocked-token'); });
     let writes = 0;
     await page.route('https://api.github.com/**', async route => {
       const request = route.request();
