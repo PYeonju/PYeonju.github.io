@@ -6,6 +6,8 @@
   const heading = document.getElementById('editor-heading');
   const dateLabel = document.getElementById('original-post-date');
   const admin = window.BlogAdmin;
+  const drafts = window.BlogDrafts;
+  const fields = ['post-title', 'post-series', 'post-summary', 'post-content'].map(id => document.getElementById(id));
   const editPath = new URLSearchParams(window.location.search).get('edit');
   const validEditPath = !editPath || /^_posts\/[^/\\]+\.(md|markdown)$/.test(editPath);
   let original = null;
@@ -42,7 +44,8 @@
       .replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 65) || 'post';
   }
   function refreshButton() {
-    button.disabled = !admin.verified || loading || saving || !validEditPath || (!!editPath && !original);
+    fields.forEach(field => { field.disabled = loading || saving || !!drafts?.hasPending; });
+    button.disabled = !admin.verified || loading || saving || !!drafts?.hasPending || !validEditPath || (!!editPath && !original);
   }
 
   async function loadOriginal() {
@@ -66,6 +69,7 @@
       dateLabel.textContent = '최초 작성일: ' + String(parsed.metadata.date ?? editPath.slice(7, 17)) + ' (수정해도 유지됩니다)';
       dateLabel.hidden = false;
       status.textContent = '';
+      drafts?.activate({ path: editPath, sha: file.sha, branch });
     } catch (error) {
       status.textContent = '불러오기 실패: ' + error.message + ' 새로고침 후 다시 시도해 주세요.';
     } finally {
@@ -79,9 +83,11 @@
     document.getElementById('editor-locked').hidden = admin.verified;
     if (!validEditPath) status.textContent = '올바른 글 수정 주소가 아닙니다.';
     refreshButton();
+    if (admin.verified && !editPath) drafts?.activate({ path: 'new', sha: '', branch: admin.branch });
     void loadOriginal();
   }
   document.addEventListener('blog-admin-change', updateAccess);
+  document.addEventListener('blog-draft-state', refreshButton);
   updateAccess();
 
   form.addEventListener('submit', async event => {
@@ -129,6 +135,7 @@
       link.textContent = 'GitHub에서 글 확인';
       status.append(link);
       if (!editPath) form.reset();
+      drafts?.published(result.content.sha);
     } catch (error) {
       status.textContent = error.status === 409
         ? '다른 수정 내용과 충돌했습니다. 입력 내용을 복사한 뒤 새로고침하여 최신 글을 확인해 주세요.'
