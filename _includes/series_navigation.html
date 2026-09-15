@@ -1,0 +1,24 @@
+{% if page.series and page.series != '' %}
+  {% assign ordered_series = site.posts | where: 'series', page.series | sort: 'date' %}
+  {% assign previous_in_series = nil %}
+  {% assign next_in_series = nil %}
+  {% for item in ordered_series %}
+    {% if item.path == page.path %}
+      {% unless forloop.first %}
+        {% assign previous_index = forloop.index0 | minus: 1 %}
+        {% assign previous_in_series = ordered_series[previous_index] %}
+      {% endunless %}
+      {% unless forloop.last %}
+        {% assign next_index = forloop.index0 | plus: 1 %}
+        {% assign next_in_series = ordered_series[next_index] %}
+      {% endunless %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+  {% if previous_in_series or next_in_series %}
+  <nav class="series-navigation" aria-label="{{ page.series | escape }} 시리즈 이전·다음 글">
+    {% if previous_in_series %}<a class="series-previous" href="{{ previous_in_series.url | relative_url }}" rel="prev"><small>← 이전 글</small><span>{{ previous_in_series.title | escape }}</span></a>{% endif %}
+    {% if next_in_series %}<a class="series-next" href="{{ next_in_series.url | relative_url }}" rel="next"><small>다음 글 →</small><span>{{ next_in_series.title | escape }}</span></a>{% endif %}
+  </nav>
+  {% endif %}
+{% endif %}

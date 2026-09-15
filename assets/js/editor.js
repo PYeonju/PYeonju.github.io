@@ -99,8 +99,8 @@
     refreshButton();
     status.textContent = editPath ? '수정 내용을 저장하는 중...' : 'GitHub에 글을 등록하는 중...';
     try {
-      const date = new Date().toISOString().slice(0, 10);
-      const path = editPath || '_posts/' + date + '-' + slugify(title) + '.md';
+      const date = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ') + ' +0900';
+      const path = editPath || '_posts/' + date.slice(0, 10) + '-' + slugify(title) + '.md';
       const contentsPath = admin.contentsPath(path);
       const metadata = editPath ? { ...original.metadata } : { layout: 'post', date };
       metadata.title = title;

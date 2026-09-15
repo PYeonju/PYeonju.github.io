@@ -6,7 +6,7 @@
   <li>
     <div class="post-row">
       <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
-      {% unless include.titles_only %}<time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: '%Y-%m-%d' }}</time>{% endunless %}
+      {% unless include.titles_only %}<time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: '%Y-%m-%d %H:%M' }}</time>{% endunless %}
       <button type="button" class="delete-post" data-path="{{ post.path | escape }}" data-title="{{ post.title | escape }}" aria-label="{{ post.title | escape }} 삭제" title="글 삭제" hidden>×</button>
     </div>
     {% unless include.titles_only %}{% if post.summarize %}<p>{{ post.summarize }}</p>{% endif %}{% endunless %}
