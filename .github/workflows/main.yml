@@ -23,6 +23,7 @@ jobs:
           bundler-cache: true
       - run: node --test tests/blog-ui.test.js
       - run: bundle exec jekyll build
+      - run: python3 tests/check-rendered.py
       - name: Check rendered blog controls and post paths
         run: |
           python3 - <<'CHECK'

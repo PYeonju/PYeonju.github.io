@@ -12,7 +12,7 @@ permalink: /admin/
   <input id="post-series" list="known-series" placeholder="예: C++">
   <datalist id="known-series">
     {% assign series_names = site.posts | map: 'series' | compact | uniq | sort %}
-    {% for series_name in series_names %}<option value="{{ series_name | escape }}">{% endfor %}
+    {% for series_name in series_names %}<option value="{{ series_name | escape }}"></option>{% endfor %}
   </datalist>
   <label for="post-summary">짧은 소개 (선택)</label>
   <input id="post-summary" maxlength="200">

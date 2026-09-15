@@ -21,13 +21,14 @@ function environment(script, elements, admin) {
     listeners: {},
     getElementById(id) { return elements[id]; },
     createElement() { return element(); },
+    createTextNode(text) { return text; },
     addEventListener(name, callback) { this.listeners[name] = callback; },
     dispatchEvent(event) { this.listeners[event.type]?.(event); }
   };
   vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     document, window: { BlogAdmin: admin },
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
-    encodeURIComponent
+    encodeURIComponent, TextEncoder, btoa
   });
   return document;
 }
@@ -86,4 +87,34 @@ test('Blog switches between 10, 15 and 20 posts and numbered pages', () => {
   select.value = '20'; select.listeners.change();
   assert.equal(rows.filter(row => !row.hidden).length, 20);
   assert.equal(navigation.children.length, 2);
+});
+
+
+test('Consecutive Korean posts use composed filenames and keep the editor visible', async () => {
+  const elements = Object.fromEntries(['post-form','post-status','editor-locked','publish-button','post-title','post-series','post-summary','post-content'].map(id => [id, element()]));
+  const form = elements['post-form'];
+  let resets = 0;
+  form.reset = () => { resets++; };
+  const writes = [];
+  const admin = {
+    verified: true, branch: 'main', contentsPath: path => path,
+    async request(path, options) {
+      if (!options) { const error = new Error('Not Found'); error.status = 404; throw error; }
+      writes.push({ path, payload: JSON.parse(options.body) });
+      return { content: { html_url: 'https://github.com/example/post' } };
+    }
+  };
+  environment('assets/js/editor.js', elements, admin);
+  for (const title of ['테스트용', '두 번째 글']) {
+    elements['post-title'].value = title;
+    elements['post-series'].value = 'C++';
+    elements['post-summary'].value = '소개';
+    elements['post-content'].value = '# 본문';
+    await form.listeners.submit({ preventDefault() {} });
+    assert.equal(form.hidden, false);
+  }
+  assert.equal(resets, 2);
+  assert.equal(writes.length, 2);
+  assert.match(writes[0].path, /-테스트용\.md$/);
+  for (const write of writes) assert.equal(write.path, write.path.normalize('NFC'));
 });
