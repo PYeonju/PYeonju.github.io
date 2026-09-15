@@ -2,6 +2,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 import unicodedata
+from datetime import datetime
 
 VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
 
@@ -14,10 +15,21 @@ class Page(HTMLParser):
         self.details = 0
         self.edit_paths = []
         self.delete_paths = []
+        self.times = []
+        self.series = None
+        self.neighbors = {}
         self.feed(text)
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if tag == 'time':
+            self.times.append(datetime.fromisoformat(attrs['datetime']))
+        if tag == 'a' and any(a.get('class') == 'post-categories' for _, a in self.stack):
+            self.series = attrs['href']
+        if tag == 'a' and attrs.get('class') in ('series-previous', 'series-next'):
+            self.neighbors[attrs['rel']] = attrs['href']
+        if tag == 'iframe' and attrs.get('id') == 'preview-frame':
+            assert attrs.get('sandbox') == '', 'Preview must be sandboxed'
         if 'id' in attrs:
             self.fields[attrs['id']] = (tag, list(self.stack))
         if tag == 'a' and any('post-list' in a.get('class', '').split() for _, a in self.stack):
@@ -52,8 +64,11 @@ for name in ('post-title', 'post-series', 'post-summary', 'post-content', 'publi
     assert any(a.get('id') == 'post-form' for _, a in parents), name
     assert not any(t in ('datalist', 'option') for t, _ in parents), name
 
+post_pages = {}
 for page in ('blog', 'series'):
     output = Page(Path(f'_site/{page}/index.html').read_text())
+    if page == 'blog':
+        assert output.times == sorted(output.times, reverse=True), 'Blog must show newest posts first'
     for url in output.post_urls:
         path = unquote(urlsplit(url).path)
         assert path == unicodedata.normalize('NFC', path), url
@@ -62,6 +77,8 @@ for page in ('blog', 'series'):
             target /= 'index.html'
         assert target.is_file(), f'Broken post link: {url}'
         detail = Page(target.read_text())
+        post_pages[url] = detail
+        assert detail.times, 'Missing post timestamp'
         assert len(detail.edit_paths) == 1, url
         assert detail.edit_paths == detail.delete_paths, url
         assert Path(detail.edit_paths[0]).is_file(), detail.edit_paths
@@ -69,3 +86,16 @@ for page in ('blog', 'series'):
     if page == 'series' and output.post_urls:
         assert output.details, 'Missing collapsible series'
 print('Rendered editor fields, post links, and collapsible series checked.')
+
+for url, post in post_pages.items():
+    for rel, neighbor_url in post.neighbors.items():
+        assert neighbor_url != url
+        neighbor = post_pages[neighbor_url]
+        assert post.series and post.series == neighbor.series, 'Cross-series link'
+        assert neighbor.neighbors.get('next' if rel == 'prev' else 'prev') == url, 'Missing return link'
+        assert (neighbor.times[0] <= post.times[0]) if rel == 'prev' else (neighbor.times[0] >= post.times[0])
+for series in {p.series for p in post_pages.values() if p.series}:
+    group = [p for p in post_pages.values() if p.series == series]
+    assert sum('prev' in p.neighbors for p in group) == len(group) - 1
+    assert sum('next' in p.neighbors for p in group) == len(group) - 1
+print('Timestamps, newest-first order, sandboxed preview and series neighbors checked.')

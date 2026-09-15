@@ -9,7 +9,7 @@
   let verified = false;
   let branch = '';
 
-  async function request(path, options = {}) {
+  async function request(path, options = {}, responseType = 'json') {
     const token = sessionStorage.getItem('blog_token');
     if (!token) throw new Error('관리자 인증이 필요합니다.');
     const response = await fetch('https://api.github.com' + path, {
@@ -27,7 +27,7 @@
       error.status = response.status;
       throw error;
     }
-    return response.json();
+    return responseType === 'text' ? response.text() : response.json();
   }
 
   function contentsPath(path) {

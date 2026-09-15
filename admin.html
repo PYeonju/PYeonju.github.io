@@ -19,8 +19,19 @@ permalink: /admin/
   <input id="post-summary" maxlength="200">
   <label for="post-content">본문 (Markdown)</label>
   <textarea id="post-content" required rows="18" placeholder="# 첫 번째 문단"></textarea>
+  <div class="editor-actions">
+  <button type="button" id="preview-button" aria-controls="post-preview">미리보기</button>
   <button type="submit" id="publish-button">글 등록</button>
+  </div>
+  <section id="post-preview" hidden>
+    <h2>미리보기</h2>
+    <p>내용을 변경한 뒤 미리보기를 다시 누르면 갱신됩니다. 일부 블로그 전용 문법은 게시 후 표시가 다를 수 있습니다.</p>
+    <iframe id="preview-frame" title="글 미리보기" sandbox="" referrerpolicy="no-referrer" data-styles="{{ '/assets/css/styles.css' | relative_url }}"></iframe>
+  </section>
+  <p id="preview-status" role="status" aria-live="polite"></p>
 </form>
 <p id="post-status" role="status" aria-live="polite"></p>
 <script defer src="{{ '/assets/vendor/js-yaml-5.4.2.min.js' | relative_url }}"></script>
 <script defer src="{{ '/assets/js/editor.js' | relative_url }}"></script>
+
+<script defer src="{{ '/assets/js/preview.js' | relative_url }}"></script>

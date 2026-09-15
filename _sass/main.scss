@@ -324,3 +324,37 @@ body {
 .post-admin-actions { display: flex; justify-content: flex-end; gap: .75rem; align-items: center; margin: 1rem 0; }
 .post-admin-actions .delete-post { font-size: 1rem; }
 #original-post-date { opacity: .75; }
+
+.post-header { margin: 2rem 0 2.5rem; }
+.post-title { font-size: clamp(1.8rem, 4vw, 2.5rem); line-height: 1.35; margin: 0 0 .75rem; overflow-wrap: anywhere; }
+.post-date { display: block; font-size: .9rem; opacity: .75; }
+.post-content {
+  font-size: 17px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  p, ul, ol, blockquote { margin: 0 0 1.3em; }
+  h1, h2, h3, h4 { line-height: 1.4; margin: 2em 0 .8em; }
+  h1 { font-size: 1.7em; }
+  h2 { font-size: 1.45em; }
+  h3 { font-size: 1.2em; }
+  li + li { margin-top: .35em; }
+  img { max-width: 100%; height: auto; }
+  pre { padding: 1rem 1.2rem; background: var(--primary-highlight-color); border-radius: 6px; overflow-x: auto; line-height: 1.6; overflow-wrap: normal; }
+  code { font-size: .9em; }
+  :not(pre) > code { padding: .15em .35em; background: var(--primary-highlight-color); border-radius: 3px; }
+  pre code { padding: 0; background: transparent; }
+  blockquote { border-left: 3px solid currentColor; padding-left: 1em; opacity: .85; }
+  table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+  th, td { border: 1px solid currentColor; padding: .5em .75em; }
+}
+.series-navigation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--primary-highlight-color); }
+.series-navigation a { display: flex; flex-direction: column; gap: .5rem; padding: 1rem; border: 1px solid var(--primary-highlight-color); border-radius: 6px; text-decoration: none; overflow-wrap: anywhere; }
+.series-navigation a:hover { background: var(--primary-highlight-color); }
+.series-next { grid-column: 2; text-align: right; }
+.editor-actions { display: flex; gap: .75rem; }
+#preview-frame { display: block; width: 100%; height: 65vh; min-height: 320px; border: 1px solid var(--primary-highlight-color); border-radius: 6px; }
+.preview-body { margin: 0; padding: 1.5rem; }
+@media (max-width: 480px) {
+  .series-navigation { grid-template-columns: minmax(0, 1fr); }
+  .series-next { grid-column: 1; }
+}

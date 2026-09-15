@@ -8,3 +8,5 @@ plugins:
   - jekyll-seo-tag
   - jekyll-sitemap
   - jemoji
+
+timezone: Asia/Seoul

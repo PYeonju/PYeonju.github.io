@@ -26,9 +26,9 @@ function environment(script, elements, admin, options = {}) {
     dispatchEvent(event) { this.listeners[event.type]?.(event); }
   };
   const context = vm.createContext({
-    document, window: { BlogAdmin: admin, location: { search: options.search || '', assign: options.assign || (() => {}) } },
+    document, window: { BlogAdmin: admin, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
-    encodeURIComponent, TextEncoder, TextDecoder, btoa, atob, URLSearchParams
+    encodeURIComponent, TextEncoder, TextDecoder, btoa, atob, URLSearchParams, URL, Date: options.Date || Date
   });
   vm.runInContext(fs.readFileSync('assets/vendor/js-yaml-5.4.2.min.js', 'utf8'), context);
   vm.runInContext(fs.readFileSync(script, 'utf8'), context);
@@ -219,4 +219,77 @@ test('Deleting from a post page returns to Blog only after confirmation succeeds
   open(); await confirm.click();
   assert.equal(requests[1].method, 'DELETE');
   assert.deepEqual(navigations, ['/blog/']);
+});
+
+test('New posts save KST timestamps across UTC midnight and preserve chronological order', async () => {
+  const elements = editorFields();
+  elements['post-form'].reset = () => {};
+  const writes = [];
+  let now = Date.parse('2026-09-15T15:02:03Z');
+  class Clock extends Date { static now() { return now; } }
+  const admin = { verified: true, branch: 'main', contentsPath: path => path,
+    async request(path, options) {
+      if (!options) { const e = new Error('Missing'); e.status = 404; throw e; }
+      writes.push({ path, data: JSON.parse(options.body) });
+      return { content: { html_url: 'https://github.com/example/post' } };
+    }
+  };
+  environment('assets/js/editor.js', elements, admin, { Date: Clock });
+  for (const title of ['first', 'second']) {
+    elements['post-title'].value = title;
+    elements['post-content'].value = 'body';
+    elements['post-series'].value = 'C++';
+    elements['post-summary'].value = '';
+    await elements['post-form'].listeners.submit({ preventDefault() {} });
+    now += 60000;
+  }
+  const yaml = require('../assets/vendor/js-yaml-5.4.2.min.js');
+  const dates = writes.map(write => {
+    assert.match(write.path, /^_posts\/2026-09-16-/);
+    const source = Buffer.from(write.data.content, 'base64').toString();
+    return yaml.load(source.split('---')[1], { schema: yaml.CORE_SCHEMA }).date;
+  });
+  assert.deepEqual(dates, ['2026-09-16 00:02:03 +0900', '2026-09-16 00:03:03 +0900']);
+});
+
+test('Preview renders Markdown in an isolated frame without publishing and clears on reset', async () => {
+  const elements = editorFields();
+  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
+  elements['preview-frame'].dataset.styles = '/assets/css/styles.css';
+  elements['post-title'].value = '<img src=x onerror=alert(1)>';
+  elements['post-content'].value = '# Heading\n\n![image](/image.png)\n\n```cpp\nint x;\n```';
+  const calls = [];
+  const admin = { verified: true, async request(path, options, responseType) {
+    calls.push({ path, options, responseType });
+    return '<h1>Heading</h1><img src="/image.png"><pre><code>int x;</code></pre>';
+  } };
+  const doc = environment('assets/js/preview.js', elements, admin);
+  await elements['preview-button'].click();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, '/markdown');
+  assert.equal(calls[0].responseType, 'text');
+  assert.equal(JSON.parse(calls[0].options.body).text, elements['post-content'].value);
+  assert.equal(elements['post-preview'].hidden, false);
+  assert.match(elements['preview-frame'].srcdoc, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(elements['preview-frame'].srcdoc, /<pre><code>int x;/);
+  assert.match(fs.readFileSync('admin.html', 'utf8'), /id="preview-frame"[^>]*sandbox=""/);
+  elements['post-form'].listeners.reset();
+  assert.equal(elements['post-preview'].hidden, true);
+  assert.equal(elements['preview-frame'].srcdoc, '');
+  admin.verified = false;
+  doc.listeners['blog-admin-change']();
+  await elements['preview-button'].click();
+  assert.equal(calls.length, 1);
+});
+
+test('Preview failure preserves the draft and allows retry', async () => {
+  const elements = editorFields();
+  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
+  elements['post-content'].value = 'Keep this text';
+  elements['post-title'].value = 'Title';
+  environment('assets/js/preview.js', elements, { verified: true, async request() { throw new Error('Network failure'); } });
+  await elements['preview-button'].click();
+  assert.equal(elements['post-content'].value, 'Keep this text');
+  assert.equal(elements['preview-button'].disabled, false);
+  assert.match(elements['preview-status'].textContent, /Network failure/);
 });

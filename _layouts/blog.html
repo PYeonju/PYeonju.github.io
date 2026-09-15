@@ -9,6 +9,7 @@ layout: description
   <option value="15">15개</option>
   <option value="20">20개</option>
 </select>
-{% include post_list.html posts=site.posts paginated=true %}
+{% assign newest_posts = site.posts | sort: 'date' | reverse %}
+{% include post_list.html posts=newest_posts paginated=true %}
 <nav id="blog-pagination" class="blog-pagination" aria-label="글 목록 페이지"></nav>
 <script defer src="{{ '/assets/js/pagination.js' | relative_url }}"></script>
