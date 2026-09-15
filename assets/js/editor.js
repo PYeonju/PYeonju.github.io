@@ -19,7 +19,7 @@
     return btoa(binary);
   }
   function slugify(title) {
-    return title.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    return title.toLowerCase().normalize('NFC')
       .replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 65) || 'post';
   }
 
