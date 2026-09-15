@@ -11,6 +11,10 @@
   let pending = null;
   let baseline = '';
   const values = () => fields.map(field => field.value);
+  function updateState() {
+    saveButton.disabled = !admin.verified || !context || !!pending;
+    document.dispatchEvent(new CustomEvent('blog-draft-state'));
+  }
   const stamp = time => new Date(time).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false });
   const key = () => 'blog-draft:v1:PYeonju/PYeonju.github.io:' + context.branch + ':' + context.path;
 
@@ -18,6 +22,7 @@
     localStorage.removeItem(key());
     pending = null;
     recovery.hidden = true;
+    updateState();
   }
   function save(manual = false) {
     if (!admin.verified || !context) return;
@@ -45,10 +50,11 @@
   }
 
   window.BlogDrafts = {
+    get hasPending() { return !!pending; },
     activate(next) {
       if (!admin.verified) return;
       if (context && context.path === next.path && context.branch === next.branch) {
-        saveButton.disabled = false;
+        updateState();
         return;
       }
       context = next;
@@ -67,6 +73,7 @@
         message.textContent = stamp(draft.savedAt) + '에 보관한 임시저장이 있습니다.' +
           (next.path !== 'new' && draft.sha !== next.sha ? ' 이후 원본 글이 변경되었습니다. 복원 후 최신 내용과 비교해 주세요.' : '') +
           ' 복원하거나 삭제한 뒤 작성해 주세요.';
+        updateState();
       } catch (error) {
         status.textContent = '임시저장을 읽지 못했습니다. 현재 입력 내용은 유지됩니다.';
       }
@@ -90,6 +97,7 @@
     fields.forEach((field, index) => { field.value = pending.values[index]; });
     pending = null;
     recovery.hidden = true;
+    updateState();
     save(true);
     document.dispatchEvent(new CustomEvent('blog-draft-restored'));
   });
@@ -101,5 +109,5 @@
       status.textContent = '보관된 임시저장을 삭제했습니다.';
     } catch (error) { status.textContent = '임시저장을 삭제하지 못했습니다.'; }
   });
-  document.addEventListener('blog-admin-change', () => { saveButton.disabled = !admin.verified || !context; });
+  document.addEventListener('blog-admin-change', updateState);
 }());

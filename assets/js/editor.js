@@ -44,8 +44,8 @@
       .replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 65) || 'post';
   }
   function refreshButton() {
-    fields.forEach(field => { field.disabled = loading || saving; });
-    button.disabled = !admin.verified || loading || saving || !validEditPath || (!!editPath && !original);
+    fields.forEach(field => { field.disabled = loading || saving || !!drafts?.hasPending; });
+    button.disabled = !admin.verified || loading || saving || !!drafts?.hasPending || !validEditPath || (!!editPath && !original);
   }
 
   async function loadOriginal() {
@@ -87,6 +87,7 @@
     void loadOriginal();
   }
   document.addEventListener('blog-admin-change', updateAccess);
+  document.addEventListener('blog-draft-state', refreshButton);
   updateAccess();
 
   form.addEventListener('submit', async event => {
