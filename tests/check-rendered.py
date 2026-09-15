@@ -28,8 +28,7 @@ class Page(HTMLParser):
             self.series = attrs['href']
         if tag == 'a' and attrs.get('class') in ('series-previous', 'series-next'):
             self.neighbors[attrs['rel']] = attrs['href']
-        if tag == 'iframe' and attrs.get('id') == 'preview-frame':
-            assert attrs.get('sandbox') == '', 'Preview must be sandboxed'
+        assert attrs.get('id') != 'preview-frame', 'Preview must be inline'
         if 'id' in attrs:
             self.fields[attrs['id']] = (tag, list(self.stack))
         if tag == 'a' and any('post-list' in a.get('class', '').split() for _, a in self.stack):
@@ -60,6 +59,8 @@ class Page(HTMLParser):
 assert Path('_site/assets/vendor/js-yaml-5.4.2.min.js').is_file()
 assert Path('_site/assets/vendor/markdown-it-15.0.2.min.js').is_file()
 admin = Page(Path('_site/admin/index.html').read_text())
+assert 'preview-content' in admin.fields
+assert Path('_site/assets/vendor/dompurify-3.4.15.min.js').is_file()
 for name in ('post-title', 'post-series', 'post-summary', 'post-content', 'publish-button'):
     tag, parents = admin.fields[name]
     assert any(a.get('id') == 'post-form' for _, a in parents), name
@@ -99,4 +100,4 @@ for series in {p.series for p in post_pages.values() if p.series}:
     group = [p for p in post_pages.values() if p.series == series]
     assert sum('prev' in p.neighbors for p in group) == len(group) - 1
     assert sum('next' in p.neighbors for p in group) == len(group) - 1
-print('Timestamps, newest-first order, sandboxed preview and series neighbors checked.')
+print('Timestamps, newest-first order, inline preview and series neighbors checked.')

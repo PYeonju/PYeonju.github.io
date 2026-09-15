@@ -26,6 +26,7 @@ function environment(script, elements, admin, options = {}) {
     dispatchEvent(event) { this.listeners[event.type]?.(event); }
   };
   const context = vm.createContext({
+    DOMPurify: { isSupported: true, sanitize: html => html }, // DOM sanitization is exercised with the real browser below.
     document, localStorage: options.storage, getComputedStyle: options.getComputedStyle || (() => ({ getPropertyValue: name => ({ '--primary-background-color': '#222', '--primary-text-color': 'white', '--primary-highlight-color': '#2e2e2e' }[name]) })), window: { BlogAdmin: admin, confirm: () => true, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
     CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
     encodeURIComponent, TextEncoder, TextDecoder, btoa, atob, URLSearchParams, URL, Date: options.Date || Date
@@ -255,10 +256,9 @@ test('New posts save KST timestamps across UTC midnight and preserve chronologic
   assert.deepEqual(dates, ['2026-09-16 00:02:03 +0900', '2026-09-16 00:03:03 +0900']);
 });
 
-test('Preview renders Markdown in an isolated frame without publishing and clears on reset', async () => {
+test('Preview renders Markdown inline without publishing and clears on reset', async () => {
   const elements = editorFields();
-  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
-  elements['preview-frame'].dataset.styles = '/assets/css/styles.css';
+  for (const id of ['preview-button','post-preview','preview-content','preview-title','preview-status']) elements[id] = element();
   elements['post-title'].value = '<img src=x onerror=alert(1)>';
   elements['post-content'].value = '# Heading\n\n![image](/image.png)\n\n```cpp\nint x;\n```';
   const calls = [];
@@ -270,12 +270,12 @@ test('Preview renders Markdown in an isolated frame without publishing and clear
   await elements['preview-button'].click();
   assert.equal(calls.length, 0, 'Preview must not send the draft to GitHub');
   assert.equal(elements['post-preview'].hidden, false);
-  assert.match(elements['preview-frame'].srcdoc, /&lt;img src=x onerror=alert\(1\)&gt;/);
-  assert.match(elements['preview-frame'].srcdoc, /<pre><code[^>]*>int x;/);
-  assert.match(fs.readFileSync('admin.html', 'utf8'), /id="preview-frame"[^>]*sandbox=""/);
+  assert.equal(elements['preview-title'].textContent, '<img src=x onerror=alert(1)>');
+  assert.match(elements['preview-content'].innerHTML, /<pre><code[^>]*>int x;/);
+  assert.doesNotMatch(fs.readFileSync('admin.html', 'utf8'), /<iframe/);
   elements['post-form'].listeners.reset();
   assert.equal(elements['post-preview'].hidden, true);
-  assert.equal(elements['preview-frame'].srcdoc, '');
+  assert.equal(elements['preview-content'].textContent, '');
   admin.verified = false;
   doc.listeners['blog-admin-change']();
   await elements['preview-button'].click();
@@ -284,7 +284,7 @@ test('Preview renders Markdown in an isolated frame without publishing and clear
 
 test('Preview failure preserves the draft and allows retry', async () => {
   const elements = editorFields();
-  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
+  for (const id of ['preview-button','post-preview','preview-content','preview-title','preview-status']) elements[id] = element();
   elements['post-content'].value = 'Keep this text';
   elements['post-title'].value = 'Title';
   environment('assets/js/preview.js', elements, { verified: true }, { markdownit: () => { throw new Error('Render failure'); } });
@@ -292,23 +292,24 @@ test('Preview failure preserves the draft and allows retry', async () => {
   assert.equal(elements['post-content'].value, 'Keep this text');
   assert.equal(elements['preview-button'].disabled, false);
   assert.match(elements['preview-status'].textContent, /Render failure/);
+  assert.equal(elements['post-preview'].hidden, false);
+  assert.equal(elements['preview-content'].textContent, 'Keep this text');
+  assert.match(elements['preview-content'].className, /preview-plain/);
 });
 
 test('Preview keeps plain text, line breaks, angle brackets and readable theme colors', async () => {
   const elements = editorFields();
-  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
-  elements['preview-frame'].dataset.styles = '/assets/css/styles.css';
+  for (const id of ['preview-button','post-preview','preview-content','preview-title','preview-status']) elements[id] = element();
   elements['post-title'].value = '일반 글';
   elements['post-content'].value = '그냥 Text 입니다.\n다음 줄입니다.\n\n<Text>\nvector<int> & 비교';
   environment('assets/js/preview.js', elements, { verified: true });
   await elements['preview-button'].click();
-  const html = elements['preview-frame'].srcdoc;
+  const html = elements['preview-content'].innerHTML;
   assert.match(html, /그냥 Text 입니다\.<br>/);
   assert.match(html, /다음 줄입니다\./);
   assert.match(html, /&lt;Text&gt;/);
   assert.match(html, /vector&lt;int&gt; &amp; 비교/);
-  assert.match(html, /--primary-background-color:#222/);
-  assert.match(html, /--primary-text-color:white/);
+  assert.equal(elements['preview-content'].className, 'post-content');
 });
 
 function draftFields() {
@@ -394,14 +395,12 @@ test('Draft storage failure leaves the editor text intact and reports failure', 
 
 test('Preview stays readable while the stylesheet has not loaded', async () => {
   const elements = editorFields();
-  for (const id of ['preview-button','post-preview','preview-frame','preview-status']) elements[id] = element();
-  elements['preview-frame'].dataset.styles = '/assets/css/styles.css';
+  for (const id of ['preview-button','post-preview','preview-content','preview-title','preview-status']) elements[id] = element();
   elements['post-title'].value = '';
   elements['post-content'].value = '# 안녕하세요\n\n그리고 그냥\n\n이런식으로 작성하는 텍스트';
   environment('assets/js/preview.js', elements, { verified: true }, { getComputedStyle: () => ({ getPropertyValue: () => '' }) });
   await elements['preview-button'].click();
-  assert.match(elements['preview-frame'].srcdoc, /<h1>안녕하세요<\/h1>/);
-  assert.match(elements['preview-frame'].srcdoc, /<p>이런식으로 작성하는 텍스트<\/p>/);
-  assert.match(elements['preview-frame'].srcdoc, /--primary-background-color:#fff/);
-  assert.match(elements['preview-frame'].srcdoc, /--primary-text-color:#222/);
+  assert.match(elements['preview-content'].innerHTML, /<h1>안녕하세요<\/h1>/);
+  assert.match(elements['preview-content'].innerHTML, /<p>이런식으로 작성하는 텍스트<\/p>/);
+  assert.equal(elements['post-preview'].hidden, false);
 });
