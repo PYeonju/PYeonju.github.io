@@ -3,9 +3,10 @@ layout: description
 title: New Post
 permalink: /admin/
 ---
-<h1>New Post</h1>
+<h1 id="editor-heading">New Post</h1>
 <p id="editor-locked">상단의 <strong>관리자 권한</strong>에서 GitHub 토큰을 인증하면 글을 작성할 수 있습니다.</p>
 <form id="post-form" hidden>
+  <p id="original-post-date" hidden></p>
   <label for="post-title">제목</label>
   <input id="post-title" required maxlength="120">
   <label for="post-series">Series (선택)</label>
@@ -21,4 +22,5 @@ permalink: /admin/
   <button type="submit" id="publish-button">글 등록</button>
 </form>
 <p id="post-status" role="status" aria-live="polite"></p>
+<script defer src="{{ '/assets/vendor/js-yaml-5.4.2.min.js' | relative_url }}"></script>
 <script defer src="{{ '/assets/js/editor.js' | relative_url }}"></script>
