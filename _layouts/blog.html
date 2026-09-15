@@ -16,4 +16,4 @@ layout: description
 {% assign newest_posts = site.posts | sort: 'date' | reverse %}
 {% include post_list.html posts=newest_posts paginated=true %}
 <nav id="blog-pagination" class="blog-pagination" aria-label="글 목록 페이지"></nav>
-<script defer src="{{ '/assets/js/pagination.js' | relative_url }}"></script>
+<script defer src="{{ '/assets/js/pagination.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

@@ -12,7 +12,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     try {
       const ext = path.extname(target);
       res.setHeader('Content-Type', ({ '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' })[ext] || 'application/octet-stream');
-      res.end(fs.readFileSync(target));
+      let content = fs.readFileSync(target);
+      if (ext === '.html' && req.url.includes('legacy=1')) {
+        content = content.toString().replace(/<script[^>]+src="[^"]*markdown-it[^"]*"[^>]*><\/script>/g, '');
+      }
+      res.end(content);
     } catch { res.writeHead(404); res.end(); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -42,6 +46,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.locator('#post-title').fill('일반 텍스트 확인');
     await page.locator('#post-series').fill('C++');
     await page.locator('#post-summary').fill('소개');
+    const previewFrame = page.frameLocator('#preview-frame');
+    for (const body of ['# 안녕하세요', '그리고 그냥\n\n이런식으로 작성하는 텍스트', '# 다시 안녕하세요\n\n일반 문장입니다.']) {
+      await page.locator('#post-content').fill(body);
+      await page.click('#preview-button');
+      const expected = body.split('\n').filter(Boolean).at(-1).replace(/^# /, '');
+      await previewFrame.locator('.post-content').getByText(expected, { exact: false }).waitFor({ state: 'visible' });
+      if (body.startsWith('# ')) assert.equal(await previewFrame.locator('.post-content h1').innerText(), body.split('\n')[0].slice(2));
+    }
     const text = '그냥 Text 입니다.\n다음 줄입니다.\n\n<Text>\nvector<int> & 비교';
     await page.locator('#post-content').fill(text);
     for (const theme of ['default', 'dark']) {
@@ -69,6 +81,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.waitForFunction(() => document.querySelector('#post-status').textContent.includes('등록 완료'));
     assert.equal(writes, 1);
     assert.equal(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('blog-draft:')).length), 0);
+    // Simulate cached editor HTML without the Markdown renderer tag.
+    await page.goto(base + '/admin/?legacy=1');
+    await page.locator('#post-form').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => typeof markdownit), 'undefined');
+    await page.locator('#post-content').fill('# 안녕하세요\n\n그리고 그냥\n\n이런식으로 작성하는 텍스트');
+    await page.click('#preview-button');
+    await page.frameLocator('#preview-frame').locator('.post-content h1').getByText('안녕하세요', { exact: true }).waitFor({ state: 'visible' });
+    assert.match(await page.frameLocator('#preview-frame').locator('.post-content').innerText(), /이런식으로 작성하는 텍스트/);
     await page.goto(base + '/blog/');
     const hint = await page.locator('.blog-toolbar > p').boundingBox();
     const control = await page.locator('.page-size-control').boundingBox();
