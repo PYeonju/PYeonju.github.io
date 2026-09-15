@@ -2,20 +2,33 @@
   'use strict';
   const button = document.getElementById('preview-button');
   const panel = document.getElementById('post-preview');
-  const frame = document.getElementById('preview-frame');
   const status = document.getElementById('preview-status');
   const form = document.getElementById('post-form');
   const admin = window.BlogAdmin;
+  // Recover an older cached editor without ever rendering into an iframe.
+  document.getElementById('preview-frame')?.remove();
+  let titleOutput = document.getElementById('preview-title');
+  let output = document.getElementById('preview-content');
+  if (!titleOutput || !output) {
+    const article = document.createElement('article');
+    article.className = 'preview-document';
+    titleOutput = document.createElement('h1');
+    titleOutput.id = 'preview-title';
+    titleOutput.className = 'post-title';
+    output = document.createElement('div');
+    output.id = 'preview-content';
+    article.append(titleOutput, output);
+    panel.append(article);
+  }
   let generation = 0;
   const scriptUrl = new URL(document.currentScript?.src || '/assets/js/preview.js', window.location.href);
-  let rendererPromise = null;
-  function getRenderer() {
-    if (typeof markdownit === 'function') return Promise.resolve(markdownit);
-    if (rendererPromise) return rendererPromise;
-    // An older cached editor page may not include the renderer script.
-    rendererPromise = new Promise((resolve, reject) => {
+  const loading = new Map();
+  function library(file, current) {
+    if (current()) return Promise.resolve(current());
+    if (loading.has(file)) return loading.get(file);
+    const promise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      const url = new URL('../vendor/markdown-it-15.0.2.min.js', scriptUrl);
+      const url = new URL('../vendor/' + file, scriptUrl);
       url.search = scriptUrl.search;
       script.src = url.href;
       let finished = false;
@@ -24,22 +37,22 @@
         finished = true;
         clearTimeout(timeout);
         script.remove();
-        if (error) { rendererPromise = null; reject(error); }
-        else resolve(markdownit);
+        if (error) { loading.delete(file); reject(error); }
+        else resolve(current());
       };
-      const timeout = setTimeout(() => finish(new Error('미리보기 파일을 불러오지 못했습니다. 다시 눌러 주세요.')), 15000);
-      script.onload = () => finish(typeof markdownit === 'function' ? null : new Error('미리보기 변환기를 초기화하지 못했습니다.'));
-      script.onerror = () => finish(new Error('미리보기 파일을 불러오지 못했습니다. 다시 눌러 주세요.'));
+      const timeout = setTimeout(() => finish(new Error('미리보기 파일 로딩 시간 초과')), 10000);
+      script.onload = () => finish(current() ? null : new Error('미리보기 변환기 초기화 실패'));
+      script.onerror = () => finish(new Error('미리보기 파일 로딩 실패'));
       document.head.append(script);
     });
-    return rendererPromise;
+    loading.set(file, promise);
+    return promise;
   }
-  const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
   function clear() {
     generation++;
     panel.hidden = true;
-    frame.srcdoc = '';
+    titleOutput.textContent = '';
+    output.textContent = '';
     status.textContent = '';
     button.disabled = !admin.verified;
   }
@@ -47,30 +60,39 @@
   document.addEventListener('blog-admin-change', clear);
   document.addEventListener('blog-draft-restored', clear);
   clear();
-  button.addEventListener('click', async () => {
+  button.addEventListener('click', async event => {
+    event?.preventDefault();
     if (!admin.verified || button.disabled) return;
     const body = document.getElementById('post-content').value;
-    if (!body.trim()) { status.textContent = '미리 볼 본문을 입력해 주세요.'; return; }
     const title = document.getElementById('post-title').value;
     const current = ++generation;
+    // Show the original text first. Rendering failure must never leave an empty block.
+    titleOutput.textContent = title;
+    titleOutput.hidden = !title.trim();
+    output.className = 'post-content preview-plain';
+    output.textContent = body;
+    panel.hidden = false;
+    if (!body.trim()) { status.textContent = '미리 볼 본문을 입력해 주세요.'; return; }
     button.disabled = true;
     status.textContent = '미리보기를 만드는 중...';
-    panel.hidden = true;
     try {
-      const render = await getRenderer();
+      const [render, purifier] = await Promise.all([
+        library('markdown-it-15.0.2.min.js', () => typeof markdownit === 'function' ? markdownit : null),
+        library('dompurify-3.4.15.min.js', () => typeof DOMPurify !== 'undefined' && DOMPurify.isSupported && DOMPurify.sanitize ? DOMPurify : null)
+      ]);
       const html = render({ html: false, breaks: true, linkify: true }).render(body);
+      const clean = purifier.sanitize(html, {
+        ALLOWED_TAGS: ['p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 's', 'blockquote', 'ul', 'ol', 'li', 'pre', 'code', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'start', 'align'],
+        ALLOW_DATA_ATTR: false
+      });
       if (current !== generation || !admin.verified) return;
-      const styles = new URL(frame.dataset.styles, window.location.href).href;
-      const base = window.location.origin + '/';
-      const theme = getComputedStyle(document.documentElement);
-      const defaults = { background: '#fff', text: '#222', highlight: '#eee' };
-      const colors = Object.keys(defaults).map(name => '--primary-' + name + '-color:' + (theme.getPropertyValue('--primary-' + name + '-color').trim() || defaults[name])).join(';');
-      // The sandbox has no script or same-origin permission: preview content cannot access the token.
-      frame.srcdoc = '<!doctype html><html lang="ko" style="' + escape(colors) + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="' + escape(base) + '"><link rel="stylesheet" href="' + escape(styles) + '"></head><body class="preview-body" style="color:var(--primary-text-color,#222);background:var(--primary-background-color,white)"><header class="post-header"><h1 class="post-title">' + escape(title) + '</h1></header><div class="post-content">' + html + '</div></body></html>';
-      panel.hidden = false;
-      status.textContent = '미리보기를 갱신했습니다.';
+      if (typeof clean !== 'string' || !clean.trim()) throw new Error('표시할 변환 결과가 없습니다');
+      output.innerHTML = clean;
+      output.className = 'post-content';
+      status.textContent = '미리보기를 갱신했습니다. GitHub에는 저장하지 않았습니다.';
     } catch (error) {
-      if (current === generation) status.textContent = '미리보기 실패: ' + error.message;
+      if (current === generation) status.textContent = 'Markdown 변환을 완료하지 못해 원문을 표시합니다. ' + error.message;
     } finally {
       if (current === generation) button.disabled = !admin.verified;
     }
