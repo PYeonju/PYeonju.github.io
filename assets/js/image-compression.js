@@ -41,7 +41,7 @@
       if (item.type === 'IDAT') {
         if (!inserted) parts.push(chunk('IDAT', compressed));
         inserted = true;
-      } else if (!['tEXt', 'zTXt', 'iTXt', 'eXIf', 'tIME'].includes(item.type)) parts.push(item.bytes);
+      } else if (!['tEXt', 'zTXt', 'iTXt', 'tIME'].includes(item.type)) parts.push(item.bytes);
     }
     return new Blob(parts, { type: 'image/png' });
   }
