@@ -44,16 +44,14 @@
       for (const file of images) {
         if (!types[file.type]) throw new Error('PNG, JPG, GIF, WebP 이미지를 선택해 주세요.');
         if (file.size > 10 * 1024 * 1024) throw new Error('이미지는 한 장당 10MB까지 넣을 수 있습니다.');
-        // Decode before accepting a file whose MIME type might be misleading.
-        const bitmap = await createImageBitmap(file);
-        bitmap.close();
-        const id = crypto.randomUUID() + '.' + types[file.type];
-        await stored('put', id, file);
+        const optimized = await window.BlogImageCompression.optimize(file);
+        const id = crypto.randomUUID() + '.' + optimized.extension;
+        await stored('put', id, optimized.file);
         if (!admin.verified || body.disabled) { await stored('delete', id); break; }
         const text = '\n![이미지 설명](blog-image/' + id + ')\n';
         body.setRangeText(text, body.selectionStart, body.selectionEnd, 'end');
         body.dispatchEvent(new Event('input', { bubbles: true }));
-        status.textContent = '이미지를 넣었습니다. 미리보기로 확인하세요. 게시할 때 GitHub에 저장됩니다.';
+        status.textContent = (optimized.saved ? '자동 압축으로 ' + Math.round(optimized.saved / 1024) + 'KB 절약했습니다. ' : '') + '이미지를 넣었습니다. 미리보기로 확인하세요. 게시할 때 GitHub에 저장됩니다.';
       }
     } catch (error) {
       status.textContent = '이미지 추가 실패: ' + error.message;
@@ -110,16 +108,22 @@
         image.src = urls.get(id);
       }
     },
-    async prepare(text) {
+    async prepare(text, metadata) {
+      text = window.BlogContentPaths?.remap(text) || text;
       const files = [];
+      const seen = new Set();
+      if (!/^[a-zA-Z0-9-]{1,80}$/.test(metadata.post_id) || !/^\d{4}$/.test(metadata.image_year)) throw new Error('글의 이미지 저장 경로를 확인해 주세요.');
       for (const id of references(text)) {
         const file = await stored('get', id);
         if (!file) throw new Error('보관된 이미지를 찾을 수 없습니다. 이미지를 다시 넣어 주세요.');
-        const path = 'assets/images/uploads/' + id;
-        const bytes = new Uint8Array(await file.arrayBuffer());
+        const optimized = await window.BlogImageCompression.optimize(file);
+        const hash = await window.BlogImageCompression.hash(optimized.file);
+        const path = 'assets/images/posts/' + metadata.image_year + '/' + metadata.post_id + '/' + hash + '.' + optimized.extension;
+        const bytes = new Uint8Array(await optimized.file.arrayBuffer());
         let binary = '';
         for (const byte of bytes) binary += String.fromCharCode(byte);
-        files.push({ path, content: btoa(binary) });
+        if (!seen.has(path)) files.push({ path, content: btoa(binary) });
+        seen.add(path);
         text = text.replaceAll('blog-image/' + id, '/' + path);
       }
       return { text, files };

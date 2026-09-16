@@ -63,7 +63,8 @@
   button.addEventListener('click', async event => {
     event?.preventDefault();
     if (!admin.verified || button.disabled) return;
-    const body = document.getElementById('post-content').value;
+    const rawBody = document.getElementById('post-content').value;
+    const body = window.BlogContentPaths?.remap(rawBody) || rawBody;
     const title = document.getElementById('post-title').value;
     const current = ++generation;
     // Show the original text first. Rendering failure must never leave an empty block.

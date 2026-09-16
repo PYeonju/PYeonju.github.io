@@ -6,7 +6,7 @@ module.exports = async function (browser, base) {
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => { if (!sessionStorage.getItem('profile-test-logout')) sessionStorage.setItem('blog_token', 'mock-profile-token'); });
   const requests = [];
-  let data = { image: '/Image/Deck.jpg', intro: '기존 소개\n두 번째 줄' };
+  let data = { image: '/assets/images/profile/default.jpg', intro: '기존 소개\n두 번째 줄' };
   let sha = 'profile-old';
   let source;
   let tree;

@@ -2,6 +2,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 import unicodedata
+import json
 from datetime import datetime
 
 VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
@@ -101,3 +102,13 @@ for series in {p.series for p in post_pages.values() if p.series}:
     assert sum('prev' in p.neighbors for p in group) == len(group) - 1
     assert sum('next' in p.neighbors for p in group) == len(group) - 1
 print('Timestamps, newest-first order, inline preview and series neighbors checked.')
+
+# Migration must preserve every public post address and all local image targets.
+moves = json.loads(Path('_data/content_moves.json').read_text())
+for source, url in moves['urls'].items():
+    assert Path(source).is_file(), source
+    target = Path('_site') / unquote(urlsplit(url).path).lstrip('/')
+    assert target.is_file(), f'Changed legacy URL: {url}'
+for target in moves['images'].values():
+    assert (Path('_site') / target.lstrip('/')).is_file(), target
+print('Migrated post URLs and image destinations preserved.')

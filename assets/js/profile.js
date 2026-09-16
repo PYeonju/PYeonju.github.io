@@ -69,11 +69,10 @@
     try {
       if (!types[file.type]) throw new Error('PNG, JPG, GIF, WebP 이미지를 선택해 주세요.');
       if (file.size > 10 * 1024 * 1024) throw new Error('프로필 사진은 최대 10MB까지 가능합니다.');
-      const bitmap = await createImageBitmap(file);
-      bitmap.close();
+      const optimized = await window.BlogImageCompression.optimize(file);
       if (current !== generation || !admin.verified) return;
-      selected = file;
-      const url = URL.createObjectURL(file);
+      selected = optimized.file;
+      const url = URL.createObjectURL(selected);
       urls.push(url);
       preview.src = url;
       status.textContent = '사진을 선택했습니다. 저장을 눌러야 반영됩니다.';
