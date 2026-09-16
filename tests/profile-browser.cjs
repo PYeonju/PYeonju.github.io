@@ -1,0 +1,108 @@
+const assert = require('node:assert/strict');
+module.exports = async function (browser, base) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => { if (!sessionStorage.getItem('profile-test-logout')) sessionStorage.setItem('blog_token', 'mock-profile-token'); });
+  const requests = [];
+  let data = { image: '/Image/Deck.jpg', intro: '기존 소개\n두 번째 줄' };
+  let sha = 'profile-old';
+  let source;
+  let tree;
+  let conflict = false;
+  await page.route('https://api.github.com/**', async route => {
+    const req = route.request(), url = new URL(req.url());
+    const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    const payload = req.postDataJSON();
+    requests.push({ method: req.method(), path: url.pathname, payload });
+    let response, status = 200;
+    if (url.pathname === '/user') response = { login: 'PYeonju' };
+    else if (url.pathname === '/repos/PYeonju/PYeonju.github.io') response = { default_branch: 'main', permissions: { push: true } };
+    else if (url.pathname.endsWith('/contents/_data/profile.json')) response = { sha, encoding: 'base64', content: Buffer.from(JSON.stringify(data)).toString('base64') };
+    else if (url.pathname.includes('/git/ref/')) response = { object: { sha: 'parent' } };
+    else if (url.pathname.endsWith('/git/commits/parent')) response = { tree: { sha: 'base-tree' } };
+    else if (url.pathname.endsWith('/git/blobs')) {
+      if (payload.encoding === 'utf-8') source = JSON.parse(payload.content);
+      response = { sha: payload.encoding === 'utf-8' ? 'profile-new' : 'image-sha' };
+    } else if (url.pathname.endsWith('/git/trees')) { tree = payload; response = { sha: 'tree' }; }
+    else if (url.pathname.endsWith('/git/commits')) response = { sha: 'new-commit' };
+    else if (url.pathname.includes('/git/refs/')) {
+      status = conflict ? 422 : 200;
+      if (!conflict) { data = source; sha = 'profile-new'; }
+      response = conflict ? { message: 'Not fast forward' } : { object: { sha: 'new-commit' } };
+    } else { status = 404; response = { message: 'Not found' }; }
+    await route.fulfill({ status, headers, contentType: 'application/json', body: JSON.stringify(response) });
+  });
+  await page.goto(base + '/home/');
+  await page.locator('#profile-edit').waitFor({ state: 'visible' });
+  // Every New Post click gets its own address; refresh restores the same draft.
+  await page.click('#new-post-link');
+  await page.locator('#post-form').waitFor({ state: 'visible' });
+  const first = new URL(page.url()).searchParams.get('draft');
+  assert(first);
+  await page.locator('#post-title').fill('첫 번째 초안');
+  await page.locator('#post-content').fill('보관할 내용');
+  await page.reload();
+  await page.locator('#draft-recovery').waitFor({ state: 'visible' });
+  assert.equal(new URL(page.url()).searchParams.get('draft'), first);
+  await page.click('#draft-restore');
+  assert.equal(await page.inputValue('#post-content'), '보관할 내용');
+  await page.click('#new-post-link');
+  await page.locator('#post-form').waitFor({ state: 'visible' });
+  assert.notEqual(new URL(page.url()).searchParams.get('draft'), first);
+  assert.equal(await page.inputValue('#post-content'), '');
+  assert.equal(await page.locator('#draft-recovery').isVisible(), false);
+  assert.equal(await page.locator('#draft-list a').count(), 1);
+  await page.locator('#draft-list a').click();
+  await page.locator('#draft-recovery').waitFor({ state: 'visible' });
+  await page.click('#draft-restore');
+  assert.equal(await page.inputValue('#post-content'), '보관할 내용');
+  await page.goto(base + '/home/');
+  await page.click('#profile-edit');
+  await page.waitForFunction(() => !document.querySelector('#profile-save').disabled);
+  assert.equal(await page.inputValue('#profile-intro-input'), '기존 소개\n두 번째 줄');
+  const writes = () => requests.filter(req => req.method !== 'GET').length;
+  const initialWrites = writes();
+  const png = Buffer.from(await page.evaluate(() => { const c = document.createElement('canvas'); c.width = c.height = 4; return c.toDataURL().split(',')[1]; }), 'base64');
+  await page.locator('#profile-photo').setInputFiles({ name: 'profile.png', mimeType: 'image/png', buffer: png });
+  await page.waitForFunction(() => document.querySelector('#profile-photo-preview').src.startsWith('blob:') && !document.querySelector('#profile-save').disabled);
+  assert.equal(writes(), initialWrites, 'Photo selection must stay local');
+  await page.click('#profile-cancel');
+  assert.equal(writes(), initialWrites, 'Cancel must not write');
+  await page.click('#profile-edit');
+  await page.waitForFunction(() => !document.querySelector('#profile-save').disabled);
+  await page.locator('#profile-intro-input').fill('소개 수정 <script>실행 금지</script>\n두 번째 줄');
+  await page.locator('#profile-photo').setInputFiles({ name: 'profile.png', mimeType: 'image/png', buffer: png });
+  await page.waitForFunction(() => !document.querySelector('#profile-save').disabled);
+  conflict = true;
+  await page.click('#profile-save');
+  await page.locator('#profile-status').getByText(/충돌/).waitFor();
+  assert.match(await page.inputValue('#profile-intro-input'), /소개 수정/);
+  conflict = false;
+  const retry = requests.length;
+  await page.click('#profile-save');
+  await page.locator('#profile-status').getByText(/저장 완료/).waitFor();
+  assert.equal(tree.tree.length, 2);
+  assert(tree.tree.some(item => item.path === '_data/profile.json'));
+  assert(tree.tree.some(item => item.path.startsWith('assets/images/profile/')));
+  assert(data.image.startsWith('/assets/images/profile/'));
+  assert.equal(requests.slice(retry).filter(req => req.path.endsWith('/git/commits')).length, 1);
+  assert.equal(requests.slice(retry).find(req => req.method === 'PATCH').payload.force, false);
+  assert.equal(await page.locator('#profile-intro script').count(), 0);
+  assert.equal(await page.locator('#profile-intro').textContent(), data.intro);
+  // Intro-only edits retain the photo and do not create another image blob.
+  const savedPhoto = data.image;
+  await page.locator('#profile-intro-input').fill('소개만 변경');
+  await page.click('#profile-save');
+  await page.locator('#profile-status').getByText(/저장 완료/).waitFor();
+  assert.equal(data.image, savedPhoto);
+  assert.equal(tree.tree.length, 1);
+  await page.click('#profile-cancel');
+  await page.click('#admin-button');
+  assert.equal(await page.locator('#profile-edit').isVisible(), false);
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('Chromium: unique New Post drafts, reload/recovery, profile local selection/cancel, atomic save, conflict retention, intro-only editing and admin visibility passed.');
+};

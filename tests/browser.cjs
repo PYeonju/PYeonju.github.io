@@ -196,6 +196,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await page.inputValue('#post-content'), bodyBeforeIdle);
     assert.deepEqual(errors, []);
     await require('./images-browser.cjs')(browser, base);
+    await require('./profile-browser.cjs')(browser, base);
     console.log('Chromium: inline Markdown/plain text, fallback and retry, sanitization, zero preview saves/API calls, draft recovery and toolbar passed.');
   } finally {
     if (browser) await browser.close();
