@@ -10,3 +10,8 @@ plugins:
   - jemoji
 
 timezone: Asia/Seoul
+
+exclude:
+  - tools
+  - tests
+  - docs

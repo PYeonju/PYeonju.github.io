@@ -22,6 +22,7 @@ jobs:
           ruby-version: '3.1'
           bundler-cache: true
       - run: node --test tests/blog-ui.test.js
+      - run: python3 tools/content_audit.py --check
       - run: bundle exec jekyll build
       - run: python3 tests/check-rendered.py
       - name: Check rendered blog controls and post paths

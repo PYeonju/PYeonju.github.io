@@ -74,10 +74,13 @@ module.exports = async function (browser, base) {
   await page.click('#publish-button');
   await page.locator('#post-status').getByText(/등록 완료/).waitFor();
   assert.equal(tree.base_tree, 'base-tree');
-  assert.equal(tree.tree.length, 4);
-  assert.equal(tree.tree.filter(item => item.path.startsWith('assets/images/uploads/')).length, 3);
+  assert(tree.tree.some(item => /^_posts\/\d{4}\/\d{4}-/.test(item.path)));
+  const metadata = require('../assets/vendor/js-yaml-5.4.2.min.js').load(postSource.split('---')[1]);
+  assert(tree.tree.some(item => item.path.startsWith('assets/images/posts/' + metadata.image_year + '/' + metadata.post_id + '/')));
+  assert.equal(tree.tree.length, 2);
+  assert.equal(tree.tree.filter(item => item.path.startsWith('assets/images/posts/')).length, 1);
   assert(!postSource.includes('blog-image/'));
-  assert.equal((postSource.match(/\/assets\/images\/uploads\//g) || []).length, 3);
+  assert.equal((postSource.match(/\/assets\/images\/posts\//g) || []).length, 3);
   const retry = requests.slice(retryStart);
   assert.equal(retry.filter(req => req.path.endsWith('/git/commits')).length, 1);
   assert.equal(retry.filter(req => req.method === 'PATCH').length, 1);

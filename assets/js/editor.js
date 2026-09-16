@@ -9,7 +9,9 @@
   const drafts = window.BlogDrafts;
   const fields = ['post-title', 'post-series', 'post-summary', 'post-content'].map(id => document.getElementById(id));
   const editPath = new URLSearchParams(window.location.search).get('edit');
-  const validEditPath = !editPath || /^_posts\/[^/\\]+\.(md|markdown)$/.test(editPath);
+  const validEditPath = !editPath || /^_posts\/(?:\d{4}\/)?[^/\\]+\.(md|markdown)$/.test(editPath);
+  const makePostId = () => window.crypto?.randomUUID?.() || Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  let newPostId = makePostId();
   let original = null;
   let loading = false;
   let saving = false;
@@ -66,7 +68,7 @@
       document.getElementById('post-series').value = String(parsed.metadata.series ?? '');
       document.getElementById('post-summary').value = String(parsed.metadata.summarize ?? '');
       document.getElementById('post-content').value = parsed.body;
-      dateLabel.textContent = '최초 작성일: ' + String(parsed.metadata.date ?? editPath.slice(7, 17)) + ' (수정해도 유지됩니다)';
+      dateLabel.textContent = '최초 작성일: ' + String(parsed.metadata.date ?? editPath.split('/').pop().slice(0, 10)) + ' (수정해도 유지됩니다)';
       dateLabel.hidden = false;
       status.textContent = '';
       drafts?.activate({ path: editPath, sha: file.sha, branch });
@@ -107,15 +109,18 @@
     status.textContent = editPath ? '수정 내용을 저장하는 중...' : 'GitHub에 글을 등록하는 중...';
     try {
       const date = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ') + ' +0900';
-      const path = editPath || '_posts/' + date.slice(0, 10) + '-' + slugify(title) + '.md';
+      const path = editPath || '_posts/' + date.slice(0, 4) + '/' + date.slice(0, 10) + '-' + slugify(title) + '.md';
       const contentsPath = admin.contentsPath(path);
       const metadata = editPath ? { ...original.metadata } : { layout: 'post', date };
+      metadata.post_id = metadata.post_id || newPostId;
+      metadata.image_year = String(metadata.image_year || (editPath ? editPath.split('/').pop().slice(0, 4) : date.slice(0, 4)));
+      if (!editPath) metadata.permalink = '/' + date.slice(0, 10).replaceAll('-', '/') + '/' + slugify(title) + '.html';
       metadata.title = title;
       if (series) metadata.series = series; else delete metadata.series;
       if (summary) metadata.summarize = summary; else delete metadata.summarize;
       // Editing preserves date, permalink, slug, and all other existing metadata.
       if (body.includes('blog-image/') && !window.BlogImages) throw new Error('이미지 기능을 불러오지 못했습니다. 새로고침 후 임시저장을 복원해 주세요.');
-      const attachments = window.BlogImages ? await window.BlogImages.prepare(body) : { text: body, files: [] };
+      const attachments = window.BlogImages ? await window.BlogImages.prepare(body, metadata) : { text: body, files: [] };
       const source = '---\n' + jsyaml.dump(metadata, { schema: jsyaml.YAML11_SCHEMA }) + '---\n\n' + attachments.text;
       if (!editPath) {
         await admin.request(contentsPath + '?ref=' + encodeURIComponent(admin.branch))
@@ -144,7 +149,7 @@
       link.href = result.content.html_url;
       link.textContent = 'GitHub에서 글 확인';
       status.append(link);
-      if (!editPath) form.reset();
+      if (!editPath) { form.reset(); newPostId = makePostId(); }
       drafts?.published(result.content.sha);
     } catch (error) {
       status.textContent = error.status === 409

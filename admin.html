@@ -32,7 +32,7 @@ editor: true
   <label for="post-content">본문 (Markdown)</label>
   <button type="button" id="image-add">이미지 넣기</button>
   <input type="file" id="image-files" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
-  <p class="editor-help">캡처 후 본문에서 Ctrl+V를 누르거나 이미지 파일을 끌어 놓으세요. PNG·JPG·GIF·WebP, 한 장당 최대 10MB. 이미지도 임시저장에 보관되며 게시할 때 업로드됩니다.</p>
+  <p class="editor-help">캡처 후 본문에서 Ctrl+V를 누르거나 이미지 파일을 끌어 놓으세요. PNG·JPG·GIF·WebP, 한 장당 최대 10MB. PNG는 원본 해상도를 유지해 무손실 압축하고, JPG는 더 작을 때 고품질 WebP로 저장합니다. 이미지도 임시저장에 보관되며 게시할 때 업로드됩니다.</p>
   <p id="image-status" role="status" aria-live="polite"></p>
   <textarea id="post-content" required rows="18" placeholder="# 첫 번째 문단"></textarea>
   <div class="editor-actions">
@@ -55,6 +55,8 @@ editor: true
 </form>
 <p id="post-status" role="status" aria-live="polite"></p>
 <script defer src="{{ '/assets/vendor/js-yaml-5.4.2.min.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script defer src="{{ '/assets/js/image-compression.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script defer src="{{ '/assets/js/content-paths.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 <script defer src="{{ '/assets/js/drafts.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 <script defer src="{{ '/assets/js/images.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 <script defer src="{{ '/assets/js/publish-images.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

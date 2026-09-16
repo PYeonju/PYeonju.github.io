@@ -32,6 +32,7 @@ permalink: /home/
         </div>
     </form>
 </dialog>
+<script defer src="{{ '/assets/js/image-compression.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 <script defer src="{{ '/assets/js/publish-images.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 <script defer src="{{ '/assets/js/profile.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 

@@ -129,8 +129,8 @@ function editorFields() {
   return Object.fromEntries(['post-form','post-status','editor-locked','publish-button','editor-heading','original-post-date','post-title','post-series','post-summary','post-content'].map(id => [id, element()]));
 }
 
-for (const withDate of [true, false]) {
-  test('Editing preserves file path, metadata and ' + (withDate ? 'explicit date' : 'filename-derived date'), async () => {
+for (const withDate of [true, false]) for (const nested of [true, false]) {
+  test('Editing preserves file path, metadata and ' + (withDate ? 'explicit date' : 'filename-derived date') + (nested ? ' in year folder' : ''), async () => {
     const yaml = require('../assets/vendor/js-yaml-5.4.2.min.js');
     const elements = editorFields();
     let resets = 0;
@@ -152,7 +152,7 @@ for (const withDate of [true, false]) {
         return { content: { html_url: 'https://github.com/example/post', sha: 'saved-sha-' + writes.length } };
       }
     };
-    const path = '_posts/2020-12-22-original.md';
+    const path = nested ? '_posts/2020/2020-12-22-original.md' : '_posts/2020-12-22-original.md';
     environment('assets/js/editor.js', elements, admin, { search: '?edit=' + encodeURIComponent(path) });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(elements['post-title'].value, meta.title);
@@ -249,7 +249,7 @@ test('New posts save KST timestamps across UTC midnight and preserve chronologic
   }
   const yaml = require('../assets/vendor/js-yaml-5.4.2.min.js');
   const dates = writes.map(write => {
-    assert.match(write.path, /^_posts\/2026-09-16-/);
+    assert.match(write.path, /^_posts\/2026\/2026-09-16-/);
     const source = Buffer.from(write.data.content, 'base64').toString();
     return yaml.load(source.split('---')[1], { schema: yaml.CORE_SCHEMA }).date;
   });
