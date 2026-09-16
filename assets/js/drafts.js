@@ -10,6 +10,13 @@
   const newButton = document.getElementById('draft-new');
   const list = document.getElementById('draft-list');
   const prefix = 'blog-draft:v1:PYeonju/PYeonju.github.io:';
+  // A navigation click starts a new draft; replace the URL so refresh restores it.
+  const entryUrl = new URL(window.location.href);
+  if (entryUrl.searchParams.get('new') === '1') {
+    entryUrl.search = '';
+    entryUrl.searchParams.set('draft', window.crypto?.randomUUID?.() || Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+    window.history.replaceState(null, '', entryUrl.href);
+  }
   const selectedId = new URLSearchParams(window.location.search).get('draft');
   const newPath = selectedId && /^[a-zA-Z0-9-]{1,64}$/.test(selectedId) ? 'new:' + selectedId : 'new';
   const isNew = path => path === 'new' || path.startsWith('new:');
