@@ -65,6 +65,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       assert.equal(await page.locator('#post-preview iframe').count(), 0);
       if (body.startsWith('# ')) assert.equal(await previewFrame.locator('.post-content h1').innerText(), body.split('\n')[0].slice(2));
     }
+    const editorBox = await page.locator('.editor-pane').boundingBox();
+    const previewBox = await page.locator('#post-preview').boundingBox();
+    assert(previewBox.x >= editorBox.x + editorBox.width, 'Desktop preview must sit to the right of the editor');
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileEditor = await page.locator('.editor-pane').boundingBox();
+    const mobilePreview = await page.locator('#post-preview').boundingBox();
+    assert(mobilePreview.y >= mobileEditor.y + mobileEditor.height, 'Mobile preview must follow the editor');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Mobile editor must not overflow horizontally');
+    await page.setViewportSize({ width: 1280, height: 900 });
     // A failed renderer must leave visible, literal original text instead of an empty block.
     await page.evaluate(() => { window.savedRenderer = window.markdownit; window.markdownit = () => { throw new Error('forced render failure'); }; });
     await page.locator('#post-content').fill('원문 <Text>\n두 번째 줄');
