@@ -27,6 +27,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   try {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.clock.install({ time: new Date('2026-09-16T00:00:00Z') });
     const base = `http://127.0.0.1:${server.address().port}`;
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -132,6 +133,58 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert(Math.abs(control.x + control.width - toolbar.x - toolbar.width) < 3);
     await page.setViewportSize({ width: 375, height: 800 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile layout must not overflow');
+    // New drafts have separate slots, capped at three, and are recoverable from the list.
+    await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('blog-draft:')).forEach(key => localStorage.removeItem(key)));
+    await page.goto(base + '/admin/?draft=capacity-a');
+    for (const title of ['A', 'B', 'C', 'D']) {
+      await page.locator('#post-form').waitFor({ state: 'visible' });
+      await page.locator('#post-title').fill(title);
+      await page.locator('#post-content').fill(title + ' body');
+      await page.click('#draft-save');
+      await page.clock.fastForward(1000);
+      if (title !== 'D') {
+        const before = page.url();
+        await page.click('#draft-new');
+        await page.waitForURL(url => url.href !== before);
+      }
+    }
+    const draftTitles = () => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('blog-draft:')).map(key => JSON.parse(localStorage.getItem(key)).values[0]).sort());
+    assert.deepEqual(await draftTitles(), ['B','C','D']);
+    await page.click('#draft-save');
+    assert.deepEqual(await draftTitles(), ['B','C','D']);
+    await page.locator('#draft-list a').getByText(/^B ·/).click();
+    await page.locator('#draft-recovery').waitFor({ state: 'visible' });
+    await page.click('#draft-restore');
+    assert.equal(await page.inputValue('#post-content'), 'B body');
+    await page.click('#draft-new');
+    await page.locator('#post-form').waitFor({ state: 'visible' });
+    await page.locator('#post-title').fill('E');
+    await page.locator('#post-content').fill('E body');
+    assert.deepEqual(await draftTitles(), ['B','D','E']);
+    assert.equal(writes, 1, 'Drafts must not publish');
+    // More than an hour of active use must stay signed in; 30 truly idle minutes must expire.
+    await page.clock.fastForward(29 * 60000);
+    assert.equal(await page.evaluate(() => BlogAdmin.verified), true);
+    await page.locator('#post-content').focus();
+    await page.keyboard.type(' active typing');
+    await page.clock.fastForward(29 * 60000);
+    assert.equal(await page.evaluate(() => BlogAdmin.verified), true);
+    await page.click('#draft-save');
+    await page.clock.fastForward(29 * 60000);
+    assert.equal(await page.evaluate(() => BlogAdmin.verified), true);
+    await page.keyboard.press('Tab');
+    const storedBeforeIdle = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+    const bodyBeforeIdle = await page.inputValue('#post-content');
+    await page.clock.fastForward(30 * 60000 + 1);
+    assert.equal(await page.evaluate(() => BlogAdmin.verified), false);
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('blog_token')), null);
+    assert.equal(await page.evaluate(() => JSON.stringify({ ...localStorage })), storedBeforeIdle);
+    assert.equal(await page.inputValue('#post-content'), bodyBeforeIdle);
+    await page.click('#admin-button');
+    await page.locator('#github-token').fill('test-only-mocked-token');
+    await page.click('#admin-confirm');
+    await page.locator('#post-form').waitFor({ state: 'visible' });
+    assert.equal(await page.inputValue('#post-content'), bodyBeforeIdle);
     assert.deepEqual(errors, []);
     console.log('Chromium: inline Markdown/plain text, fallback and retry, sanitization, zero preview saves/API calls, draft recovery and toolbar passed.');
   } finally {
