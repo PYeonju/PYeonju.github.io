@@ -370,3 +370,22 @@ body {
 #post-form #image-files[hidden] { display: none; }
 #image-add { align-self: flex-start; }
 .post-content img { max-width: 100%; height: auto; }
+
+// Give writing and preview enough room without widening ordinary blog pages.
+.mid-section-cover.editor-page { width: 94%; max-width: 1440px; }
+#post-form .editor-pane, #post-preview { min-width: 0; }
+#post-preview { overflow-wrap: anywhere; }
+#post-preview > h2 { margin-top: 0; }
+@media (min-width: 1000px) {
+  #post-form:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+  #post-preview { position: sticky; top: 1.5rem; }
+  #post-preview .preview-document { max-height: calc(100vh - 14rem); }
+}
+@media (max-width: 999px) {
+  #post-preview { margin-top: 2rem; }
+}

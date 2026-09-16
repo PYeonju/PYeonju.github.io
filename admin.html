@@ -2,10 +2,12 @@
 layout: description
 title: New Post
 permalink: /admin/
+editor: true
 ---
 <h1 id="editor-heading">New Post</h1>
 <p id="editor-locked">상단의 <strong>관리자 권한</strong>에서 GitHub 토큰을 인증하면 글을 작성할 수 있습니다.</p>
 <form id="post-form" hidden>
+  <div class="editor-pane">
   <p id="original-post-date" hidden></p>
   <div class="draft-library">
     <strong>임시저장 목록 (최대 3개)</strong>
@@ -40,6 +42,7 @@ permalink: /admin/
   </div>
   <p id="draft-status" role="status" aria-live="polite"></p>
   <p class="editor-help">작성 내용은 이 브라우저에 최대 3개까지 자동으로 임시저장됩니다. 초과하면 마지막 저장 시각이 가장 오래된 초안부터 삭제됩니다. 다른 기기에서는 복원되지 않으며, 브라우저 데이터를 삭제하면 지워집니다.</p>
+  </div>
   <section id="post-preview" hidden>
     <h2>미리보기</h2>
     <p>내용을 변경한 뒤 미리보기를 다시 누르면 갱신됩니다. 일부 블로그 전용 문법은 게시 후 표시가 다를 수 있습니다.</p>
@@ -47,8 +50,8 @@ permalink: /admin/
       <h1 id="preview-title" class="post-title"></h1>
       <div id="preview-content" class="post-content"></div>
     </article>
+    <p id="preview-status" role="status" aria-live="polite"></p>
   </section>
-  <p id="preview-status" role="status" aria-live="polite"></p>
 </form>
 <p id="post-status" role="status" aria-live="polite"></p>
 <script defer src="{{ '/assets/vendor/js-yaml-5.4.2.min.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
