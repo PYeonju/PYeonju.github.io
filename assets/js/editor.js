@@ -114,6 +114,7 @@
       if (series) metadata.series = series; else delete metadata.series;
       if (summary) metadata.summarize = summary; else delete metadata.summarize;
       // Editing preserves date, permalink, slug, and all other existing metadata.
+      if (body.includes('blog-image/') && !window.BlogImages) throw new Error('이미지 기능을 불러오지 못했습니다. 새로고침 후 임시저장을 복원해 주세요.');
       const attachments = window.BlogImages ? await window.BlogImages.prepare(body) : { text: body, files: [] };
       const source = '---\n' + jsyaml.dump(metadata, { schema: jsyaml.YAML11_SCHEMA }) + '---\n\n' + attachments.text;
       if (!editPath) {

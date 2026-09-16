@@ -93,9 +93,7 @@
         status.textContent = '빈 임시저장을 삭제했습니다.';
       } else {
         const savedAt = Date.now();
-        const replaced = localStorage.getItem(key());
         localStorage.setItem(key(), JSON.stringify({ version: 1, values: content, sha: context.sha, savedAt }));
-        void window.BlogImages?.release(replaced || '');
         const removed = trim();
         pending = null;
         recovery.hidden = true;
