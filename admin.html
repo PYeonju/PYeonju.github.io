@@ -7,6 +7,11 @@ permalink: /admin/
 <p id="editor-locked">상단의 <strong>관리자 권한</strong>에서 GitHub 토큰을 인증하면 글을 작성할 수 있습니다.</p>
 <form id="post-form" hidden>
   <p id="original-post-date" hidden></p>
+  <div class="draft-library">
+    <strong>임시저장 목록 (최대 3개)</strong>
+    <button type="button" id="draft-new" disabled>새 초안 작성</button>
+    <ul id="draft-list"></ul>
+  </div>
   <div id="draft-recovery" hidden>
     <p id="draft-recovery-message"></p>
     <button type="button" id="draft-restore">임시저장 복원</button>
@@ -30,7 +35,7 @@ permalink: /admin/
   <button type="submit" id="publish-button">글 등록</button>
   </div>
   <p id="draft-status" role="status" aria-live="polite"></p>
-  <p class="editor-help">작성 내용은 이 브라우저에 자동으로 임시저장됩니다. 다른 기기에서는 복원되지 않으며, 브라우저 데이터를 삭제하면 지워집니다.</p>
+  <p class="editor-help">작성 내용은 이 브라우저에 최대 3개까지 자동으로 임시저장됩니다. 초과하면 마지막 저장 시각이 가장 오래된 초안부터 삭제됩니다. 다른 기기에서는 복원되지 않으며, 브라우저 데이터를 삭제하면 지워집니다.</p>
   <section id="post-preview" hidden>
     <h2>미리보기</h2>
     <p>내용을 변경한 뒤 미리보기를 다시 누르면 갱신됩니다. 일부 블로그 전용 문법은 게시 후 표시가 다를 수 있습니다.</p>

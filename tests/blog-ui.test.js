@@ -27,7 +27,7 @@ function environment(script, elements, admin, options = {}) {
   };
   const context = vm.createContext({
     DOMPurify: { isSupported: true, sanitize: html => html }, // DOM sanitization is exercised with the real browser below.
-    document, localStorage: options.storage, getComputedStyle: options.getComputedStyle || (() => ({ getPropertyValue: name => ({ '--primary-background-color': '#222', '--primary-text-color': 'white', '--primary-highlight-color': '#2e2e2e' }[name]) })), window: { BlogAdmin: admin, confirm: () => true, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
+    document, localStorage: options.storage, getComputedStyle: options.getComputedStyle || (() => ({ getPropertyValue: name => ({ '--primary-background-color': '#222', '--primary-text-color': 'white', '--primary-highlight-color': '#2e2e2e' }[name]) })), window: { addEventListener() {}, BlogAdmin: admin, confirm: () => true, location: { href: 'https://pyeonju.github.io/admin/', origin: 'https://pyeonju.github.io', search: options.search || '', assign: options.assign || (() => {}) } },
     CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
     encodeURIComponent, TextEncoder, TextDecoder, btoa, atob, URLSearchParams, URL, Date: options.Date || Date
   });
@@ -321,7 +321,7 @@ function draftFields() {
 }
 function storage() {
   const data = new Map();
-  return { data, getItem: key => data.get(key) ?? null, setItem: (key,value) => data.set(key,value), removeItem: key => data.delete(key) };
+  return { data, get length() { return data.size; }, key: index => [...data.keys()][index] ?? null, getItem: key => data.get(key) ?? null, setItem: (key,value) => data.set(key,value), removeItem: key => data.delete(key) };
 }
 
 test('Drafts auto-save all fields, recover after reopening, stay separate and clear after publishing', () => {
@@ -403,4 +403,123 @@ test('Preview stays readable while the stylesheet has not loaded', async () => {
   assert.match(elements['preview-content'].innerHTML, /<h1>안녕하세요<\/h1>/);
   assert.match(elements['preview-content'].innerHTML, /<p>이런식으로 작성하는 텍스트<\/p>/);
   assert.equal(elements['post-preview'].hidden, false);
+});
+
+function authEnvironment(saved, start) {
+  let now = start;
+  let timerId = 0;
+  const timers = new Map();
+  const listeners = {};
+  const fields = Object.fromEntries(['admin-dialog','admin-form','admin-button','admin-status','github-token','admin-confirm','admin-cancel','new-post-link'].map(id => [id, element()]));
+  const calls = [];
+  class Clock extends Date { static now() { return now; } }
+  const document = {
+    getElementById: id => fields[id], querySelectorAll: () => [], hidden: false,
+    addEventListener: (name, fn) => { listeners[name] = fn; },
+    dispatchEvent(event) { listeners[event.type]?.(event); }
+  };
+  const context = vm.createContext({ document, window: { addEventListener: (name, fn) => { listeners[name] = fn; } },
+    sessionStorage: saved, Date: Clock, encodeURIComponent,
+    CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
+    setTimeout(fn, ms) { timers.set(++timerId, { fn, time: now + ms }); return timerId; },
+    clearTimeout(id) { timers.delete(id); },
+    async fetch(url) { calls.push(url); return { ok: true, async json() { return url.endsWith('/user') ? { login: 'PYeonju' } : { permissions: { push: true }, default_branch: 'main' }; } }; }
+  });
+  vm.runInContext(fs.readFileSync('assets/js/admin-link.js', 'utf8'), context);
+  return { admin: context.window.BlogAdmin, calls, fields,
+    event: (name, trusted = true) => listeners[name]?.({ type: name, isTrusted: trusted }),
+    advance(ms, runTimers = true) {
+      now += ms;
+      if (runTimers) for (const [id, timer] of [...timers]) if (timer.time <= now) { timers.delete(id); timer.fn(); }
+    }
+  };
+}
+
+test('Admin expires only after 30 idle minutes; typing, IME, pointer and wheel restart the deadline', async () => {
+  const saved = storage();
+  saved.setItem('blog_token', 'mock');
+  const start = Date.parse('2026-09-16T00:00:00Z');
+  saved.setItem('blog_last_activity', String(start));
+  const app = authEnvironment(saved, start);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.admin.verified, true);
+  for (const input of ['keydown','input','compositionupdate','pointerdown','pointermove','wheel']) {
+    app.advance(29 * 60000);
+    assert.equal(app.admin.verified, true);
+    app.event(input);
+  }
+  app.advance(29 * 60000);
+  assert.equal(app.admin.verified, true);
+  app.advance(60000);
+  assert.equal(app.admin.verified, false);
+  assert.equal(saved.getItem('blog_token'), null);
+  assert.equal(saved.getItem('blog_last_activity'), null);
+});
+
+test('Page reload preserves idle deadline; expired credentials never reach GitHub', async () => {
+  const saved = storage();
+  const start = Date.parse('2026-09-16T00:00:00Z');
+  saved.setItem('blog_token', 'mock');
+  saved.setItem('blog_last_activity', String(start));
+  const reload = authEnvironment(saved, start + 29 * 60000);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reload.admin.verified, true);
+  reload.advance(60000, false); // Simulate a suspended tab whose timer did not run.
+  const before = reload.calls.length;
+  await assert.rejects(reload.admin.request('/repos/example'), /자동 로그아웃/);
+  assert.equal(reload.calls.length, before);
+  assert.equal(reload.admin.verified, false);
+  saved.setItem('blog_token', 'mock');
+  saved.setItem('blog_last_activity', String(start));
+  const expired = authEnvironment(saved, start + 30 * 60000);
+  assert.equal(expired.calls.length, 0);
+  assert.equal(saved.getItem('blog_token'), null);
+});
+
+test('Synthetic events and background requests cannot keep an admin session alive', async () => {
+  const saved = storage();
+  saved.setItem('blog_token', 'mock');
+  const start = Date.parse('2026-09-16T00:00:00Z');
+  saved.setItem('blog_last_activity', String(start));
+  const app = authEnvironment(saved, start);
+  await new Promise(resolve => setImmediate(resolve));
+  app.advance(29 * 60000);
+  app.event('keydown', false);
+  await app.admin.request('/repos/example');
+  app.advance(60000);
+  assert.equal(app.admin.verified, false);
+});
+
+test('Only three drafts survive; resaving updates one slot and eviction uses last save time', () => {
+  const saved = storage();
+  saved.setItem('theme', 'dark');
+  let now = Date.parse('2026-09-16T00:00:00Z');
+  class Clock extends Date { static now() { return now; } }
+  const editors = [];
+  for (const id of ['a','b','c']) {
+    const fields = draftFields();
+    const doc = environment('assets/js/drafts.js', fields, { verified: true }, { storage: saved, search: '?draft=' + id, Date: Clock });
+    doc.runtime.window.BlogDrafts.activate({ path: 'new', branch: 'main', sha: '' });
+    fields['post-title'].value = id;
+    fields['post-content'].value = id + ' content';
+    fields['post-content'].listeners.input();
+    editors.push(fields);
+    now += 1000;
+  }
+  const count = () => [...saved.data.keys()].filter(key => key.startsWith('blog-draft:')).length;
+  assert.equal(count(), 3);
+  editors[0]['draft-save'].click(); // a is now newer than b and c.
+  assert.equal(count(), 3);
+  now += 1000;
+  const fourth = draftFields();
+  const doc = environment('assets/js/drafts.js', fourth, { verified: true }, { storage: saved, search: '?draft=d', Date: Clock });
+  doc.runtime.window.BlogDrafts.activate({ path: 'new', branch: 'main', sha: '' });
+  fourth['post-title'].value = 'd';
+  fourth['post-content'].value = 'd content';
+  fourth['draft-save'].click();
+  assert.equal(count(), 3);
+  assert.equal([...saved.data.keys()].some(key => key.endsWith('new:b')), false);
+  assert.equal([...saved.data.keys()].some(key => key.endsWith('new:a')), true);
+  assert.equal(saved.getItem('theme'), 'dark');
+  assert.match(fourth['draft-status'].textContent, /가장 오래된/);
 });
