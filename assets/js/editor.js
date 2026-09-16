@@ -45,7 +45,7 @@
   }
   function refreshButton() {
     fields.forEach(field => { field.disabled = loading || saving || !!drafts?.hasPending; });
-    button.disabled = !admin.verified || loading || saving || !!drafts?.hasPending || !validEditPath || (!!editPath && !original);
+    button.disabled = !admin.verified || !!window.BlogImages?.busy || loading || saving || !!drafts?.hasPending || !validEditPath || (!!editPath && !original);
   }
 
   async function loadOriginal() {
@@ -88,6 +88,7 @@
   }
   document.addEventListener('blog-admin-change', updateAccess);
   document.addEventListener('blog-draft-state', refreshButton);
+  document.addEventListener('blog-image-state', refreshButton);
   updateAccess();
 
   form.addEventListener('submit', async event => {
@@ -113,13 +114,18 @@
       if (series) metadata.series = series; else delete metadata.series;
       if (summary) metadata.summarize = summary; else delete metadata.summarize;
       // Editing preserves date, permalink, slug, and all other existing metadata.
-      const source = '---\n' + jsyaml.dump(metadata, { schema: jsyaml.YAML11_SCHEMA }) + '---\n\n' + body;
+      const attachments = window.BlogImages ? await window.BlogImages.prepare(body) : { text: body, files: [] };
+      const source = '---\n' + jsyaml.dump(metadata, { schema: jsyaml.YAML11_SCHEMA }) + '---\n\n' + attachments.text;
       if (!editPath) {
         await admin.request(contentsPath + '?ref=' + encodeURIComponent(admin.branch))
           .then(() => { throw new Error('같은 제목의 글이 이미 있습니다. 제목을 바꿔주세요.'); })
           .catch(error => { if (error.status !== 404) throw error; });
       }
-      const result = await admin.request(contentsPath, {
+      const result = attachments.files.length ? await window.publishPostWithImages({
+        path, source, files: attachments.files, branch: editPath ? original.branch : admin.branch,
+        expectedSha: editPath ? original.sha : null,
+        message: (editPath ? 'Update post: ' : 'Add post: ') + title
+      }) : await admin.request(contentsPath, {
         method: 'PUT',
         body: JSON.stringify({
           message: (editPath ? 'Update post: ' : 'Add post: ') + title,
@@ -128,7 +134,10 @@
           ...(editPath ? { sha: original.sha } : {})
         })
       });
-      if (editPath) original = { ...original, metadata, body, sha: result.content.sha };
+      if (editPath) {
+        original = { ...original, metadata, body: attachments.text, sha: result.content.sha };
+        document.getElementById('post-content').value = attachments.text;
+      }
       status.replaceChildren(document.createTextNode((editPath ? '수정 완료!' : '등록 완료!') + ' 배포가 끝나면 블로그에 반영됩니다. '));
       const link = document.createElement('a');
       link.href = result.content.html_url;

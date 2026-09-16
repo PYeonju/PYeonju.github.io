@@ -366,3 +366,7 @@ body {
 .editor-help, #draft-status { font-size: .9rem; }
 #draft-recovery { padding: 1rem; margin: 1rem 0; border: 1px solid currentColor; border-radius: 6px; }
 #draft-recovery p { margin-top: 0; }
+
+#post-form #image-files[hidden] { display: none; }
+#image-add { align-self: flex-start; }
+.post-content img { max-width: 100%; height: auto; }

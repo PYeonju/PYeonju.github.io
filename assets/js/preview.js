@@ -90,6 +90,8 @@
       if (typeof clean !== 'string' || !clean.trim()) throw new Error('표시할 변환 결과가 없습니다');
       output.innerHTML = clean;
       output.className = 'post-content';
+      await window.BlogImages?.preview(output);
+      if (current !== generation || !admin.verified) return;
       status.textContent = '미리보기를 갱신했습니다. GitHub에는 저장하지 않았습니다.';
     } catch (error) {
       if (current === generation) status.textContent = 'Markdown 변환을 완료하지 못해 원문을 표시합니다. ' + error.message;

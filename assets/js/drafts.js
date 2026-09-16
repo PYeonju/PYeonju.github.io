@@ -19,7 +19,7 @@
   const values = () => fields.map(field => field.value);
   function updateState() {
     saveButton.disabled = !admin.verified || !context || !!pending;
-    if (newButton) newButton.disabled = !admin.verified || !context;
+    if (newButton) newButton.disabled = !admin.verified || !context || !!window.BlogImages?.busy;
     document.dispatchEvent(new CustomEvent('blog-draft-state'));
   }
   const stamp = time => new Date(time).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false });
@@ -42,7 +42,9 @@
     const oldest = all.filter(item => item.key !== key());
     let removed = 0;
     while (all.length - removed > 3) {
+      const discarded = localStorage.getItem(oldest[removed].key);
       localStorage.removeItem(oldest[removed].key);
+      void window.BlogImages?.release(discarded || '');
       removed++;
     }
     return removed;
@@ -69,7 +71,9 @@
   }
 
   function remove() {
+    const discarded = localStorage.getItem(key());
     localStorage.removeItem(key());
+    void window.BlogImages?.release(discarded || '');
     pending = null;
     recovery.hidden = true;
     updateState();
@@ -89,7 +93,9 @@
         status.textContent = '빈 임시저장을 삭제했습니다.';
       } else {
         const savedAt = Date.now();
+        const replaced = localStorage.getItem(key());
         localStorage.setItem(key(), JSON.stringify({ version: 1, values: content, sha: context.sha, savedAt }));
+        void window.BlogImages?.release(replaced || '');
         const removed = trim();
         pending = null;
         recovery.hidden = true;
@@ -150,7 +156,7 @@
     }
   };
   newButton?.addEventListener('click', () => {
-    if (!admin.verified || !context) return;
+    if (!admin.verified || !context || window.BlogImages?.busy) return;
     if (!pending && !save()) return;
     const url = new URL(window.location.href);
     url.search = '';
@@ -179,4 +185,5 @@
     } catch (error) { status.textContent = '임시저장을 삭제하지 못했습니다.'; }
   });
   document.addEventListener('blog-admin-change', updateState);
+  document.addEventListener('blog-image-state', updateState);
 }());
